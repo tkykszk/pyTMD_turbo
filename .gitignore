@@ -103,3 +103,6 @@ core.*
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# Original pyTMD backup
+pyTMD-v3.0.1/

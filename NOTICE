@@ -1,0 +1,25 @@
+pytmd_turbo
+Copyright (c) 2024-2026 tkykszk
+
+This software is a derivative work of PyTMD.
+
+================================================================================
+PyTMD
+https://github.com/tsutterley/pyTMD
+--------------------------------------------------------------------------------
+Copyright (c) 2017-2025 Tyler Sutterley
+
+Licensed under:
+- Source code: MIT License
+- Content: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+PyTMD is a Python-based tidal prediction software that reads OTIS and GOT
+format tidal solutions for predicting ocean and load tides.
+
+Changes made in pytmd_turbo:
+- Vectorized interpolation using scipy.ndimage.map_coordinates
+- Vectorized harmonic synthesis using NumPy broadcasting
+- Model data caching for batch processing optimization
+- GOT-specific phase corrections implementation
+- Minor constituent inference (infer_minor) optimization
+================================================================================

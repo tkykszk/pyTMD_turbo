@@ -4,6 +4,9 @@ test_math.py (11/2024)
 """
 import pytest
 import numpy as np
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
 import pyTMD.ellipse
 import pyTMD.math
 

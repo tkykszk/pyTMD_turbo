@@ -22,6 +22,9 @@ import pytest
 import shutil
 import inspect
 import pathlib
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
 import pyTMD.io
 
 # current file path

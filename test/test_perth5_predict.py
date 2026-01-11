@@ -20,8 +20,13 @@ UPDATE HISTORY:
     Written 09/2024
 """
 import pytest
-import pyTMD.io
 import numpy as np
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+timescale = pytest.importorskip("timescale", reason="timescale not installed")
+
+import pyTMD.io
 import timescale.time
 
 # parametrize chunking

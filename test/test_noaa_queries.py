@@ -12,8 +12,13 @@ UPDATE HISTORY:
         added test for xarray dataset conversion
     Written 07/2025
 """
-import pyTMD.io.NOAA
+import pytest
 import numpy as np
+
+# Skip all tests in this module if pyTMD or pyTMD.io.NOAA is not available
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+pytest.importorskip("pyTMD.io.NOAA", reason="pyTMD.io.NOAA not available")
+import pyTMD.io.NOAA
 
 def test_noaa_stations():
     """Test NOAA station information retrieval

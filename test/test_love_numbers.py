@@ -10,6 +10,10 @@ UPDATE HISTORY:
 """
 import pytest
 import numpy as np
+
+# Skip all tests in this module if pyTMD or submodules are not available
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+pytest.importorskip("pyTMD.constituents", reason="pyTMD.constituents not available")
 import pyTMD.constituents
 
 def test_love_numbers():

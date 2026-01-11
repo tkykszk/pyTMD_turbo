@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(git push:*)",
+      "Bash(gh run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(zcat:*)",
+      "Bash(gunzip:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Bash(export PYTMD_RESOURCE=/Users/taka/Documents/python/eq/LargeFiles)",
+      "Bash(PYTMD_RESOURCE=/Users/taka/Documents/python/eq/LargeFiles python -m pytest:*)",
+      "WebFetch(domain:pytmd.readthedocs.io)",
+      "Bash(grep:*)"
+    ]
+  }
+}

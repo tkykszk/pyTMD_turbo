@@ -3,37 +3,30 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyTMD"
-version = "3.0.1"
-description = "Python-based tidal prediction software for estimating ocean, load, solid Earth and pole tides"
+name = "pyTMD_turbo"
+version = "0.1.0"
+description = "High-performance tidal prediction module - a derivative work of pyTMD"
 keywords = [
     "Ocean Tides",
-    "Load Tides",
-    "Pole Tides",
     "Solid Earth Tides",
     "Tidal Prediction",
+    "High Performance",
 ]
 authors = [
-    {name = "Tyler Sutterley"},
-    {email = "tsutterl@uw.edu"}
+    {name = "tkykszk"}
 ]
 maintainers = [
-    {name = "pyTMD contributors"}
+    {name = "tkykszk"}
 ]
 license = {file = "LICENSE"}
 readme = {file = "README.md", content-type = "text/markdown"}
 
-requires-python = "~=3.9"
+requires-python = ">=3.9"
 dependencies = [
-    "h5netcdf",
-    "lxml",
     "numpy",
-    "pint",
-    "platformdirs",
-    "pyproj>=2.5.0",
     "scipy>=1.10.1",
-    "timescale>=0.0.8",
-    "xarray"
+    "xarray",
+    "netCDF4"
 ]
 
 classifiers=[
@@ -53,26 +46,11 @@ classifiers=[
 ]
 
 [project.urls]
-Homepage = "https://pytmd.readthedocs.io"
-Documentation = "https://pytmd.readthedocs.io"
-Repository = "https://github.com/pyTMD/pyTMD"
-Issues = "https://github.com/pyTMD/pyTMD/issues"
+Repository = "https://github.com/tkykszk/pyTMD_turbo"
 
 [project.optional-dependencies]
-doc = ["docutils", "graphviz", "ipympl", "myst-nb", "numpydoc", "sphinx", "sphinx-argparse>=0.4", "sphinxcontrib-bibtex", "sphinx-design", "sphinx_rtd_theme"]
-all = ["cartopy", "ipyleaflet", "ipywidgets", "jplephem", "jupyterlab", "matplotlib", "notebook", "pandas"]
-aws = ["dask", "obstore", "pandas", "pyarrow", "s3fs", "zarr>=3"]
-dev = ["dask", "flake8", "gh", "oct2py", "pytest>=4.6", "pytest-cov", "pytest-xdist"]
-
-[project.scripts]
-"fetch_arcticdata.py" = "pyTMD.datasets.fetch_arcticdata:main" 
-"fetch_aviso_fes.py" = "pyTMD.datasets.fetch_aviso_fes:main" 
-"fetch_box_tpxo.py" = "pyTMD.datasets.fetch_box_tpxo:main"
-"fetch_gsfc_got.py" = "pyTMD.datasets.fetch_gsfc_got:main" 
-"fetch_iers_opole.py" = "pyTMD.datasets.fetch_iers_opole:main"
-"fetch_jpl_ssd.py" = "pyTMD.datasets.fetch_jpl_ssd:main"
-"fetch_test_data.py" = "pyTMD.datasets.fetch_test_data:main" 
-"reduce_otis.py" = "pyTMD.datasets.reduce_otis:main" 
+numba = ["numba"]
+dev = ["pytest>=4.6", "pytest-cov", "pytest-xdist", "pyTMD>=3.0", "timescale"] 
 
 [tool.setuptools.packages.find]
 exclude = ["providers*", "run*", "test*"]
@@ -80,7 +58,7 @@ exclude = ["providers*", "run*", "test*"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 norecursedirs = ".git"
-addopts = "-n auto --verbose --capture=no -W ignore::UserWarning"
+addopts = "--verbose --capture=no -W ignore::UserWarning"
 python_files = [
     "test*.py"
 ]
@@ -91,13 +69,10 @@ testpaths = [
 [tool.coverage.run]
 branch = true
 source = [
-    "pyTMD",
+    "pyTMD_turbo",
 ]
 omit = [
-    "doc/*",
-    "providers/*.py",
-    "pyTMD/datasets/*",
-    "test/*",
+    "pyTMD_turbo/*/tests/*",
 ]
 
 [tool.coverage.report]
@@ -141,102 +116,32 @@ line-ending = "auto"
 docstring-code-format = false
 
 [tool.pixi.workspace]
-name = "pytmd"
-authors = ["pyTMD contributors"]
+name = "pytmd_turbo"
+authors = ["tkykszk"]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
-pyTMD = { path = ".", editable = true }
+pyTMD_turbo = { path = ".", editable = true }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-all = { features = ["all"], solve-group = "default" }
-aws = { features = ["all", "aws"], solve-group = "default" }
-dev = { features = ["all", "dev", "doc"], solve-group = "default" }
-doc = { features = ["all", "doc"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
 
-[tool.pixi.tasks.start]
-cmd = "jupyter lab"
-cwd = "doc/source/notebooks"
-description = "Start JupyterLab in the notebooks directory"
-
-[tool.pixi.tasks.export-env]
-args = [ { "arg" = "flags", "default" = "" } ]
-cmd = "pixi workspace export conda-environment {{ flags }} > environment.yml"
-description = "Export workspace to a conda environment file" 
-
-[tool.pixi.feature.doc.tasks.docs]
-args = [ { "arg" = "flags", "default" = "" } ]
-cmd = "make html {{ flags }}"
-cwd = "doc"
-description = "Create HTML documentation with sphinx"
-
-[tool.pixi.feature.dev.tasks.fetch]
-cmd = "python -c 'import pyTMD; pyTMD.datasets.fetch.test_data(timeout=360)'"
-description = "Fetch data needed to run the pytest suite"
-
-[tool.pixi.feature.dev.tasks.test]
-args = [ { "arg" = "flags", "default" = "" }, { "arg" = "test", "default" = "." } ]
-cmd = "pytest {{ flags }} {{ test }}"
-cwd = "test"
+[tool.pixi.tasks.test]
+cmd = "pytest"
 description = "Run the pytest suite"
 
-[tool.pixi.feature.dev.tasks.coverage]
-cmd = "pytest -n=0 --cov=pyTMD --junitxml=pytest.xml --cov-report=xml test"
+[tool.pixi.tasks.coverage]
+cmd = "pytest --cov=pyTMD_turbo --junitxml=pytest.xml --cov-report=xml"
 description = "Run the pytest suite and create coverage reports"
 
-[tool.pixi.feature.dev.tasks.lint]
-args = [ { "arg" = "flags", "default" = "--select=E9,F63,F7,F82 --show-source" }, { "arg" = "test", "default" = "." } ]
-cmd = "flake8 {{ test }} --count {{ flags }} --statistics --extend-exclude 'build/,run/,*.ipynb_checkpoints/,.pixi/'"
-description = "Run flake8 to check for compilation errors"
-
 [tool.pixi.dependencies]
-h5netcdf = "*"
 numpy = "*"
-lxml = "*"
-pint = "*"
-platformdirs = "*"
-pyproj = ">=2.5.0"
-scipy = ">=1.16.0"
-timescale = ">=0.0.8"
+scipy = ">=1.10.1"
 xarray = "*"
-
-[tool.pixi.feature.all.dependencies]
-cartopy = "*"
-matplotlib-base = "*"
-ipyleaflet = "*"
-ipywidgets = "*"
-jplephem = "*"
-jupyterlab = "*"
-pandas = "*"
-notebook = "*"
-
-[tool.pixi.feature.aws.dependencies]
-dask = "*"
-obstore = "*"
-pandas = "*"
-pyarrow = "*"
-s3fs = "*"
-zarr = ">=3"
+netcdf4 = "*"
 
 [tool.pixi.feature.dev.dependencies]
-dask = "*"
-flake8 = "*"
-gh = "*"
-oct2py = "*"
 pytest = "*"
 pytest-cov = "*"
-pytest-xdist = "*"
-
-[tool.pixi.feature.doc.dependencies]
-docutils = "*"
-graphviz = "*"
-ipympl = "*"
-myst-nb = "*"
-numpydoc = "*"
-sphinx = "*"
-sphinx-argparse = "*"
-sphinxcontrib-bibtex = "*"
-sphinx-design = "*"
-sphinx_rtd_theme = "*"

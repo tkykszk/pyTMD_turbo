@@ -24,8 +24,10 @@ UPDATE HISTORY:
 """
 import pytest
 import numpy as np
-import pyTMD
-import timescale
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+timescale = pytest.importorskip("timescale", reason="timescale not installed")
 
 def test_mean_longitudes():
     """Test that mean longitudes match between functions

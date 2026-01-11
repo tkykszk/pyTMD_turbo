@@ -7,6 +7,10 @@ import io
 import gzip
 import pytest
 import pathlib
+
+# Skip all tests in this module if pyTMD or submodules are not available
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+pytest.importorskip("pyTMD.datasets", reason="pyTMD.datasets not available")
 import pyTMD.datasets
 import pyTMD.utilities
 

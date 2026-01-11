@@ -16,6 +16,11 @@ import pytest
 import inspect
 import pathlib
 import numpy as np
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+scipy = pytest.importorskip("scipy", reason="scipy not installed")
+
 import scipy.io
 import pyTMD.interpolate
 import pyTMD.spatial

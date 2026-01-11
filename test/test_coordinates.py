@@ -11,9 +11,12 @@ UPDATE HISTORY:
     Updated 12/2023: use new crs class for coordinate reprojection
     Written 08/2020
 """
-import pyproj
+import pytest
 import numpy as np
-import pyTMD
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+pyproj = pytest.importorskip("pyproj", reason="pyproj not installed")
 
 # PURPOSE: verify coordinate conversions are close for Arctic regions
 def test_arctic_projection():

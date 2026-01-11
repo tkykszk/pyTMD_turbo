@@ -20,9 +20,15 @@ import re
 import inspect
 import pathlib
 import pytest
-import pyproj
-import xarray as xr
 import numpy as np
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+pyproj = pytest.importorskip("pyproj", reason="pyproj not installed")
+xr = pytest.importorskip("xarray", reason="xarray not installed")
+scipy = pytest.importorskip("scipy", reason="scipy not installed")
+timescale = pytest.importorskip("timescale", reason="timescale not installed")
+
 import scipy.interpolate
 import pyTMD.compute
 import pyTMD.predict

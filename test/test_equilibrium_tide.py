@@ -18,7 +18,12 @@ UPDATE HISTORY:
 """
 import pytest
 import numpy as np
-import xarray as xr
+
+# Skip all tests in this module if pyTMD is not installed
+pyTMD = pytest.importorskip("pyTMD", reason="pyTMD not installed")
+xr = pytest.importorskip("xarray", reason="xarray not installed")
+timescale = pytest.importorskip("timescale", reason="timescale not installed")
+
 import pyTMD.predict
 import pyTMD.math
 import timescale.time
