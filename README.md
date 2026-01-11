@@ -118,16 +118,6 @@ pip install -e ".[numba]"
 pip install -e ".[dev]"
 ```
 
-### Using Pixi (recommended for reproducible environments)
-
-```bash
-# Install pixi: https://pixi.sh
-pixi install
-
-# Run tests
-pixi run test
-```
-
 ### Verify Installation
 
 ```python
