@@ -287,11 +287,13 @@ sys.exit(0 if result == True else 1)
     def test_subprocess_cache_dir(self):
         """Verify PYTMD_TURBO_CACHE_DIR works in subprocess"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            code = f"""
+            # Read expected path from environment to avoid Windows path escaping issues
+            code = """
+import os
 import sys
 from pyTMD_turbo.cache import get_cache_dir
 result = get_cache_dir()
-expected = "{tmpdir}"
+expected = os.environ.get('PYTMD_TURBO_CACHE_DIR')
 sys.exit(0 if str(result) == expected else 1)
 """
             env = os.environ.copy()
@@ -333,12 +335,14 @@ sys.exit(0 if result == False else 1)
     def test_temp_cache_with_custom_dir(self):
         """PYTMD_TURBO_TEMP_CACHE and PYTMD_TURBO_CACHE_DIR can be used together"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            code = f"""
+            # Read expected path from environment to avoid Windows path escaping issues
+            code = """
+import os
 import sys
 from pyTMD_turbo.cache import _state, get_cache_dir
 temp_mode = _state.temp_mode
 cache_dir = get_cache_dir()
-expected_dir = "{tmpdir}"
+expected_dir = os.environ.get('PYTMD_TURBO_CACHE_DIR')
 sys.exit(0 if temp_mode and str(cache_dir) == expected_dir else 1)
 """
             env = os.environ.copy()
