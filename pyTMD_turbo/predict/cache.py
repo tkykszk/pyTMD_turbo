@@ -13,6 +13,7 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+import warnings
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field
@@ -136,8 +137,13 @@ class OceanTideCache:
                 amp, ph, om, alpha, species = pyTMD.constituents._constituent_parameters(const_name)
                 omega[const_name] = om  # rad/day * 86400
                 phase_0[const_name] = ph  # rad
-            except:
-                # Skip unknown constituents
+            except Exception as e:
+                warnings.warn(
+                    f"Unknown constituent '{const_name}' in model '{model_name}': {e}. "
+                    "Using omega=0.0 which will result in incorrect predictions for this constituent.",
+                    RuntimeWarning,
+                    stacklevel=2
+                )
                 omega[const_name] = 0.0
                 phase_0[const_name] = 0.0
 

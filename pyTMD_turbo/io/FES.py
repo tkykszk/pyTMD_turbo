@@ -17,6 +17,7 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 from __future__ import annotations
 
 import pathlib
+import warnings
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
@@ -213,6 +214,12 @@ def open_fes_elevation(
         constituent = data['constituent']
         if constituent is None:
             # Use filename as fallback
+            warnings.warn(
+                f"No constituent name found in '{f}'. Using filename '{f.stem}' as constituent name. "
+                "This may indicate a non-standard file format.",
+                RuntimeWarning,
+                stacklevel=2
+            )
             constituent = f.stem.lower()
 
         constituents.append(constituent)

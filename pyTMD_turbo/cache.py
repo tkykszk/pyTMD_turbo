@@ -13,6 +13,7 @@ This software is licensed under the MIT License.
 import atexit
 import os
 import threading
+import warnings
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -466,7 +467,13 @@ def load_cache(
 
             return data
 
-    except Exception:
+    except Exception as e:
+        warnings.warn(
+            f"Failed to load cache from '{cache_path}': {e}. "
+            "Cache will be ignored and data will be loaded from source.",
+            RuntimeWarning,
+            stacklevel=2
+        )
         return None
 
 

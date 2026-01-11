@@ -13,6 +13,7 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+import warnings
 import numpy as np
 from datetime import datetime, timezone
 from typing import Optional, Union
@@ -112,6 +113,13 @@ def tide_elevations(
     >>> times = np.array(['2020-01-01T00:00:00', '2020-01-01T01:00:00'], dtype='datetime64')
     >>> tide = pyTMD.compute.tide_elevations(x, y, times)
     """
+    if kwargs:
+        warnings.warn(
+            f"pyTMD_turbo.tide_elevations: ignoring unsupported kwargs: {list(kwargs.keys())}. "
+            "These parameters are accepted for PyTMD compatibility but have no effect.",
+            UserWarning,
+            stacklevel=2
+        )
     _ensure_model_loaded(model, directory)
 
     # Convert times to MJD
@@ -465,6 +473,13 @@ def tide_currents(
     >>> times = np.arange('2024-01-01', '2024-01-02', dtype='datetime64[h]')
     >>> u, v = pytmd.tide_currents(x, y, times, model='TPXO9-atlas-v5')
     """
+    if kwargs:
+        warnings.warn(
+            f"pyTMD_turbo.tide_currents: ignoring unsupported kwargs: {list(kwargs.keys())}. "
+            "These parameters are accepted for compatibility but have no effect.",
+            UserWarning,
+            stacklevel=2
+        )
     _ensure_current_model_loaded(model, directory)
 
     # Convert times to MJD
@@ -601,6 +616,13 @@ def tide_masks(
     >>> y = np.linspace(-90, 90, 181)
     >>> mask = pytmd.tide_masks(x, y, model='GOT5.5')
     """
+    if kwargs:
+        warnings.warn(
+            f"pyTMD_turbo.tide_masks: ignoring unsupported kwargs: {list(kwargs.keys())}. "
+            "These parameters are accepted for compatibility but have no effect.",
+            UserWarning,
+            stacklevel=2
+        )
     x = np.atleast_1d(np.asarray(x, dtype=np.float64))
     y = np.atleast_1d(np.asarray(y, dtype=np.float64))
 
@@ -619,8 +641,14 @@ def tide_masks(
         # Create mask: valid where not NaN
         mask = np.isfinite(tide[:, 0])
 
-    except Exception:
+    except Exception as e:
         # If prediction fails, return all False
+        warnings.warn(
+            f"tide_masks prediction failed for model '{model}': {e}. "
+            "Returning all-False mask. This may indicate a model loading or data issue.",
+            RuntimeWarning,
+            stacklevel=2
+        )
         mask = np.zeros(len(x), dtype=bool)
 
     return mask

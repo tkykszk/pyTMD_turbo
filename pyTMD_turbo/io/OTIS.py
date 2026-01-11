@@ -17,6 +17,7 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 from __future__ import annotations
 
 import pathlib
+import warnings
 from typing import TYPE_CHECKING, Tuple, List, Optional, Union
 
 import numpy as np
@@ -763,6 +764,11 @@ def open_mfdataset(
                 datasets = [ds.compute() for ds in delayed_datasets]
         except ImportError:
             # Fall back to sequential reading
+            warnings.warn(
+                "Dask not available. Falling back to sequential file reading which may be slower for multiple files.",
+                RuntimeWarning,
+                stacklevel=2
+            )
             parallel = False
 
     if not parallel:

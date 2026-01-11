@@ -13,6 +13,7 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+import warnings
 import numpy as np
 from scipy import ndimage
 from typing import Dict, List, Tuple
@@ -140,6 +141,12 @@ class OceanTideCacheOptimized:
                     omega_list.append(omega)
                     phase_0_list.append(0.0)  # Phase offset is handled in nodal corrections
                 except (ValueError, KeyError):
+                    warnings.warn(
+                        f"Unknown constituent '{const_name_lower}' in model '{model_name}'. "
+                        "Using omega=0.0 which will result in incorrect predictions for this constituent.",
+                        RuntimeWarning,
+                        stacklevel=2
+                    )
                     omega_list.append(0.0)
                     phase_0_list.append(0.0)
 
@@ -164,6 +171,12 @@ class OceanTideCacheOptimized:
                     omega_list.append(omega)
                     phase_0_list.append(0.0)
                 except (ValueError, KeyError):
+                    warnings.warn(
+                        f"Unknown constituent '{const_name}' in model '{model_name}'. "
+                        "Using omega=0.0 which will result in incorrect predictions for this constituent.",
+                        RuntimeWarning,
+                        stacklevel=2
+                    )
                     omega_list.append(0.0)
                     phase_0_list.append(0.0)
 

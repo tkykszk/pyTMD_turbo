@@ -338,7 +338,13 @@ class model:
             ds = xr.Dataset(data_vars, coords=coords)
             return ds
 
-        except Exception:
+        except Exception as e:
+            warnings.warn(
+                f"Failed to load cache for model '{self.name}': {e}. "
+                "Falling back to loading from source files.",
+                RuntimeWarning,
+                stacklevel=2
+            )
             return None
 
     def _save_to_cache(self, ds: 'xr.Dataset') -> None:
@@ -369,9 +375,13 @@ class model:
 
             cache_module.save_cache(self.name, cache_path, data, source_files)
 
-        except Exception:
-            # Silently ignore cache save errors
-            pass
+        except Exception as e:
+            warnings.warn(
+                f"Failed to save cache for model '{self.name}': {e}. "
+                "Cache will not be available for subsequent loads.",
+                RuntimeWarning,
+                stacklevel=2
+            )
 
     def _open_got_netcdf(self, **kwargs) -> 'xr.Dataset':
         """Open GOT NetCDF format model"""
@@ -404,6 +414,12 @@ class model:
             lat = first_ds['lat'].values
         else:
             # Fallback: assume dimension names are coordinates
+            warnings.warn(
+                f"Non-standard coordinate format in '{nc_files[0]}'. "
+                "Using fallback coordinate detection. Results may be incorrect.",
+                RuntimeWarning,
+                stacklevel=2
+            )
             lon = first_ds['lon'].values if 'lon' in first_ds.dims else np.arange(first_ds.dims['lon'])
             lat = first_ds['lat'].values if 'lat' in first_ds.dims else np.arange(first_ds.dims['lat'])
         first_ds.close()
@@ -438,6 +454,12 @@ class model:
                 datasets.append(da.to_dataset())
             else:
                 # Fallback for non-standard format
+                warnings.warn(
+                    f"Non-standard data format in '{nc_file}': missing 'amplitude' or 'phase' variables. "
+                    "Using fallback data extraction. Results may be incorrect.",
+                    RuntimeWarning,
+                    stacklevel=2
+                )
                 ds = ds.assign_coords(x=lon, y=lat)
                 datasets.append(ds[[const_name]])
 
