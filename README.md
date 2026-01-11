@@ -91,8 +91,52 @@ Over 50 tidal models are supported, including:
 
 ## Installation
 
+### From GitHub
+
 ```bash
+# Basic installation
+pip install git+https://github.com/tkykszk/pyTMD_turbo.git
+
+# With Numba support (optional, for additional JIT acceleration)
+pip install "pyTMD_turbo[numba] @ git+https://github.com/tkykszk/pyTMD_turbo.git"
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/tkykszk/pyTMD_turbo.git
+cd pyTMD_turbo
+
+# Install in editable mode (for development)
 pip install -e .
+
+# With Numba support
+pip install -e ".[numba]"
+
+# With development dependencies (pytest, etc.)
+pip install -e ".[dev]"
+```
+
+### Using Pixi (recommended for reproducible environments)
+
+```bash
+# Install pixi: https://pixi.sh
+pixi install
+
+# Run tests
+pixi run test
+```
+
+### Verify Installation
+
+```python
+import pyTMD_turbo
+print(pyTMD_turbo.__file__)
+
+# Check Numba availability
+from pyTMD_turbo.predict.harmonic_numba import HAS_NUMBA
+print(f"Numba available: {HAS_NUMBA}")
 ```
 
 ## Dependencies
@@ -114,6 +158,48 @@ pip install -e .
 | Numba | any | Alternative JIT-compiled harmonic synthesis (not used in default path) |
 | pyTMD | >= 3.0 | For running comparison tests |
 | timescale | any | For running comparison tests |
+
+## Model Data
+
+pyTMD_turbo requires tidal model data files. These are **not included** in the package.
+
+### Downloading Model Data
+
+Model data can be obtained from various sources:
+
+| Model | Source | Size |
+|-------|--------|------|
+| GOT5.5, GOT5.6 | [NASA GSFC](https://earth.gsfc.nasa.gov/geo/data/ocean-tide-models) | ~500 MB |
+| TPXO9-atlas | [OSU TPXO](https://www.tpxo.net/) (registration required) | ~2 GB |
+| FES2014, FES2022 | [AVISO](https://www.aviso.altimetry.fr/) (registration required) | ~3 GB |
+
+### Using pyTMD to Download
+
+If you have pyTMD installed, you can use its download utilities:
+
+```python
+import pyTMD
+pyTMD.utilities.from_http(
+    ['GOT5.5'],
+    directory='/path/to/models'
+)
+```
+
+### Directory Structure
+
+After downloading, your model directory should look like:
+
+```
+/path/to/models/
+├── GOT5.5/
+│   ├── GOT5.5_ocean_load.nc
+│   ├── GOT5.5_ocean_pole.nc
+│   └── ...
+├── TPXO9-atlas-v5/
+│   └── ...
+└── FES2014/
+    └── ...
+```
 
 ## Quick Start
 
