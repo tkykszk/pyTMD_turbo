@@ -14,7 +14,6 @@ Expected behaviors:
 - Cache ignored
 """
 
-import os
 import tempfile
 import time
 from pathlib import Path
@@ -573,31 +572,22 @@ class TestErrorConditionsMatrix:
 
         assert result is None, "Should return None for corrupted cache"
 
-    @pytest.mark.skipif(
-        os.name != 'nt',
-        reason="Permission test behavior varies across platforms"
-    )
-    def test_save_to_readonly_directory(self, cache_state, temp_cache_dir):
+    def test_save_failure_emits_warning(self, cache_state, temp_cache_dir):
         """
-        Initial: Directory is read-only
+        Initial: Save operation fails
         Expected: Warning emitted, no crash
 
-        Note: This test is highly platform-dependent and is skipped on non-Windows.
-        The key behavior (warning on save failure) is tested elsewhere.
+        Note: Uses mocking to reliably test error handling across all platforms.
         """
-        readonly_dir = temp_cache_dir / 'readonly'
-        readonly_dir.mkdir()
-        cache_path = readonly_dir / 'model.npz'
+        from unittest.mock import patch
 
-        try:
-            os.chmod(readonly_dir, 0o444)  # Read-only
-            data = create_test_data()
+        cache_path = temp_cache_dir / 'model.npz'
+        data = create_test_data()
 
-            # Should emit warning but not raise
+        # Mock np.savez_compressed to raise an exception
+        with patch('numpy.savez_compressed', side_effect=PermissionError("Permission denied")):
             with pytest.warns(RuntimeWarning, match="Failed to save cache"):
                 cache.save_cache('test_model', cache_path, data, [])
-        finally:
-            os.chmod(readonly_dir, 0o755)  # Restore permissions
 
 
 # =============================================================================
