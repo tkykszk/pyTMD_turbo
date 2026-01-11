@@ -16,6 +16,8 @@ import warnings
 import numpy as np
 from typing import Optional, Dict, List, Any
 
+from .. import cache as cache_module
+
 try:
     import xarray as xr
     HAS_XARRAY = True
@@ -233,9 +235,15 @@ class model:
         params = self._database.get(self.name, {})
         return 'u' in params and 'v' in params
 
-    def open_dataset(self, **kwargs) -> 'xr.Dataset':
+    def open_dataset(self, use_cache: bool = True, **kwargs) -> 'xr.Dataset':
         """
         Open model as xarray Dataset
+
+        Parameters
+        ----------
+        use_cache : bool, default True
+            If True, try to load from cache first. If cache doesn't exist,
+            load from files and save to cache for future use.
 
         Returns
         -------
@@ -245,16 +253,125 @@ class model:
         if not HAS_XARRAY:
             raise ImportError("xarray is required for open_dataset")
 
+        # Try to load from cache if enabled
+        if use_cache and self.name and cache_module.is_cache_enabled_for(self.name):
+            cached_ds = self._load_from_cache()
+            if cached_ds is not None:
+                return cached_ds
+
+        # Load from original files
         if self.format in ('GOT-netcdf',):
-            return self._open_got_netcdf(**kwargs)
+            ds = self._open_got_netcdf(**kwargs)
         elif self.format in ('GOT-ascii',):
-            return self._open_got_ascii(**kwargs)
+            ds = self._open_got_ascii(**kwargs)
         elif self.format in ('OTIS', 'ATLAS', 'TMD3'):
-            return self._open_otis(**kwargs)
+            ds = self._open_otis(**kwargs)
         elif self.format in ('FES-netcdf',):
-            return self._open_fes_netcdf(**kwargs)
+            ds = self._open_fes_netcdf(**kwargs)
         else:
             raise ValueError(f"Unsupported format: {self.format}")
+
+        # Save to cache if enabled
+        if use_cache and self.name and cache_module.is_cache_enabled_for(self.name):
+            self._save_to_cache(ds)
+
+        return ds
+
+    def _get_cache_path(self) -> pathlib.Path:
+        """Get cache file path for this model"""
+        return cache_module.get_cache_path(self.name, self.directory)
+
+    def _get_source_files(self) -> List[pathlib.Path]:
+        """Get list of source files for cache validation"""
+        files = []
+        if self.model_file:
+            if isinstance(self.model_file, list):
+                files.extend([pathlib.Path(f) for f in self.model_file])
+            else:
+                files.append(pathlib.Path(self.model_file))
+        if self.grid_file:
+            files.append(pathlib.Path(self.grid_file))
+        return files
+
+    def _load_from_cache(self) -> Optional['xr.Dataset']:
+        """Load model data from cache"""
+        cache_path = self._get_cache_path()
+        source_files = self._get_source_files()
+
+        data = cache_module.load_cache(self.name, cache_path, source_files)
+        if data is None:
+            return None
+
+        try:
+            # Reconstruct xarray Dataset from cached numpy arrays
+            coords = {}
+            data_vars = {}
+
+            # Extract coordinates
+            if 'x' in data:
+                coords['x'] = data['x']
+            if 'y' in data:
+                coords['y'] = data['y']
+            if 'constituent' in data:
+                # Convert bytes to strings if needed
+                constituents = data['constituent']
+                if constituents.dtype.kind == 'S':
+                    constituents = [c.decode('utf-8') for c in constituents]
+                else:
+                    constituents = list(constituents)
+                coords['constituent'] = constituents
+                self.constituents = constituents
+
+            # Extract data variables
+            for key in data:
+                if key in ('x', 'y', 'constituent'):
+                    continue
+
+                arr = data[key]
+                if arr.ndim == 3:
+                    data_vars[key] = (['constituent', 'y', 'x'], arr)
+                elif arr.ndim == 2:
+                    data_vars[key] = (['y', 'x'], arr)
+                else:
+                    data_vars[key] = arr
+
+            ds = xr.Dataset(data_vars, coords=coords)
+            return ds
+
+        except Exception:
+            return None
+
+    def _save_to_cache(self, ds: 'xr.Dataset') -> None:
+        """Save model data to cache"""
+        cache_path = self._get_cache_path()
+        source_files = self._get_source_files()
+
+        try:
+            # Convert xarray Dataset to dict of numpy arrays
+            data = {}
+
+            # Save coordinates
+            if 'x' in ds.coords:
+                data['x'] = ds.coords['x'].values
+            if 'y' in ds.coords:
+                data['y'] = ds.coords['y'].values
+            if 'constituent' in ds.coords:
+                # Convert strings to bytes for storage
+                constituents = ds.coords['constituent'].values
+                if hasattr(constituents[0], 'encode'):
+                    data['constituent'] = np.array([c.encode('utf-8') for c in constituents])
+                else:
+                    data['constituent'] = constituents
+
+            # Save data variables
+            for name, var in ds.data_vars.items():
+                data[name] = var.values
+
+            cache_module.save_cache(self.name, cache_path, data, source_files)
+
+        except Exception:
+            # Silently ignore cache save errors
+            pass
 
     def _open_got_netcdf(self, **kwargs) -> 'xr.Dataset':
         """Open GOT NetCDF format model"""
