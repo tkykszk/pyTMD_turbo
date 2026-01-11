@@ -405,18 +405,27 @@ def save_cache(
     cache_data = dict(data)
     cache_data['_metadata_json'] = np.array([str(metadata)])
 
-    # Ensure parent directory exists
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        # Ensure parent directory exists
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Save
-    np.savez_compressed(cache_path, **cache_data)
+        # Save
+        np.savez_compressed(cache_path, **cache_data)
 
-    # Register cache
-    _state.register_cache(model_name, cache_path)
+        # Register cache
+        _state.register_cache(model_name, cache_path)
 
-    # Register for temp cleanup if in temp mode
-    if _state.temp_mode:
-        _state.register_temp_cache(cache_path)
+        # Register for temp cleanup if in temp mode
+        if _state.temp_mode:
+            _state.register_temp_cache(cache_path)
+
+    except Exception as e:
+        warnings.warn(
+            f"Failed to save cache for model '{model_name}' to '{cache_path}': {e}. "
+            "Cache will not be available for subsequent loads.",
+            RuntimeWarning,
+            stacklevel=2
+        )
 
 
 def load_cache(
