@@ -66,6 +66,29 @@ from .interpolate import (
     extrapolate,
     bilinear,
 )
+from .cache import (
+    # Enable/disable
+    enable_cache,
+    disable_cache,
+    enable_cache_for,
+    disable_cache_for,
+    is_cache_enabled,
+    is_cache_enabled_for,
+    # Temp cache
+    enable_temp_cache,
+    disable_temp_cache,
+    # Context managers
+    cache_disabled,
+    cache_disabled_for,
+    # Cache operations
+    rebuild_cache,
+    rebuild_all_cache,
+    clear_cache,
+    clear_all_cache,
+    # Status
+    show_cache_status,
+    get_cache_info,
+)
 
 __version__ = '0.1.0'
 __all__ = [
@@ -102,4 +125,21 @@ __all__ = [
     # Interpolation
     'extrapolate',
     'bilinear',
+    # Cache control
+    'enable_cache',
+    'disable_cache',
+    'enable_cache_for',
+    'disable_cache_for',
+    'is_cache_enabled',
+    'is_cache_enabled_for',
+    'enable_temp_cache',
+    'disable_temp_cache',
+    'cache_disabled',
+    'cache_disabled_for',
+    'rebuild_cache',
+    'rebuild_all_cache',
+    'clear_cache',
+    'clear_all_cache',
+    'show_cache_status',
+    'get_cache_info',
 ]

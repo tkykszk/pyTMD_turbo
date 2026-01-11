@@ -17,7 +17,11 @@
       "Bash(export PYTMD_RESOURCE=/Users/taka/Documents/python/eq/LargeFiles)",
       "Bash(PYTMD_RESOURCE=/Users/taka/Documents/python/eq/LargeFiles python -m pytest:*)",
       "WebFetch(domain:pytmd.readthedocs.io)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git reset:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo edit:*)"
     ]
   }
 }
