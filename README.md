@@ -20,11 +20,24 @@ High-performance tidal prediction module - a derivative work of [pyTMD](https://
 
 pyTMD is designed for flexibility and scientific accuracy. pyTMD_turbo trades some flexibility for batch processing speed:
 
-- **~700x faster** for batch predictions (many locations/times at once)
+- **~75x faster** for batch predictions (with caching enabled)
 - **>99% correlation** with pyTMD results (typically <3cm RMS difference)
 - Optimized specifically for processing many locations/times simultaneously
+- **Zero-config caching** for repeated model loading
 
 For single-point predictions or exploratory analysis, pyTMD remains an excellent choice.
+
+### Benchmark Results
+
+Tested with GOT5.5 model, computing tides at N points × 24 time points:
+
+| Points | pyTMD | pyTMD_turbo (no cache) | pyTMD_turbo (cached) | Speedup |
+|--------|-------|------------------------|----------------------|---------|
+| 10     | 93.9s | 2.2s                   | 1.3s                 | **73x** |
+| 100    | 95.4s | 2.2s                   | 1.2s                 | **77x** |
+| 1000   | 92.1s | 2.2s                   | 1.2s                 | **76x** |
+
+*Note: pyTMD requires separate calls per time step (drift mode), while pyTMD_turbo processes all points × times in a single vectorized call. This reflects typical real-world usage patterns.*
 
 ## Features
 
@@ -58,6 +71,12 @@ For single-point predictions or exploratory analysis, pyTMD remains an excellent
   - Does not require pyTMD for core functionality
   - Built-in constituent tables and nodal corrections
   - Includes model database (same as pyTMD)
+
+- **Zero-config caching** (`pyTMD_turbo.cache`)
+  - Automatic model data caching for faster repeated loads
+  - Environment variable configuration
+  - Temporary cache mode for ephemeral processing
+  - Per-model cache control
 
 ## Supported Models
 
@@ -173,11 +192,75 @@ dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 mjd = pyTMD_turbo.datetime_to_mjd(dt)  # 60310.5
 ```
 
+## Cache System
+
+pyTMD_turbo automatically caches model data for faster repeated loads. Caching is enabled by default.
+
+### Basic Control
+
+```python
+from pyTMD_turbo import cache
+
+# Disable/enable caching globally
+cache.disable_cache()
+cache.enable_cache()
+
+# Disable/enable for specific models
+cache.disable_cache_for('GOT5.5', 'TPXO9')
+cache.enable_cache_for('GOT5.5')
+
+# Check status
+cache.show_cache_status()
+```
+
+### Context Managers
+
+```python
+from pyTMD_turbo import cache
+import pyTMD_turbo
+import numpy as np
+
+times = np.arange('2024-01-01', '2024-01-02', dtype='datetime64[h]')
+
+# Temporarily disable caching
+with cache.cache_disabled():
+    tide = pyTMD_turbo.tide_elevations(140.0, 35.0, times, model='GOT5.5')
+
+# Temporarily disable for specific model
+with cache.cache_disabled_for('GOT5.5'):
+    tide = pyTMD_turbo.tide_elevations(140.0, 35.0, times, model='GOT5.5')
+```
+
+### Cache Operations
+
+```python
+from pyTMD_turbo import cache
+
+# Clear cache for a model
+cache.clear_cache('GOT5.5')
+
+# Clear all caches
+cache.clear_all_cache()
+
+# Force rebuild (clears existing, rebuilds on next load)
+cache.rebuild_cache('GOT5.5')
+```
+
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PYTMD_TURBO_DISABLED` | Disable caching globally | `1`, `true` |
+| `PYTMD_TURBO_DISABLED_MODELS` | Disable caching for specific models | `GOT5.5,TPXO9` |
+| `PYTMD_TURBO_CACHE_DIR` | Custom cache directory | `/tmp/tide_cache` |
+| `PYTMD_TURBO_TEMP_CACHE` | Auto-delete caches on exit | `1`, `true` |
+
 ## Module Structure
 
 ```
 pyTMD_turbo/
 ├── compute.py          # Main prediction API (tide_elevations, tide_currents, SET_displacements, etc.)
+├── cache.py            # Zero-config cache control system
 ├── constituents.py     # Tidal constituent tables and nodal corrections
 ├── spatial.py          # Coordinate transformations
 ├── interpolate.py      # Extrapolation and interpolation
