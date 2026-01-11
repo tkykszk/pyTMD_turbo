@@ -6,7 +6,7 @@ name: pytest Build
 on:
   pull_request:
     paths:
-      - pyTMD/**
+      - pyTMD_turbo/**
       - test/**
       - .github/workflows/python-request.yml
     types: [opened, synchronize, reopened, ready_for_review]
@@ -22,6 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     env:
       OS: ${{ matrix.os }}
     defaults:
@@ -30,38 +31,33 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up pixi environment
-      uses: prefix-dev/setup-pixi@v0.9.1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov
+        pip install -e ".[dev]"
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        pixi run lint
+        flake8 pyTMD_turbo --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        pixi run lint "--exit-zero --max-complexity=10 --max-line-length=127"
-    - name: Checkout Matlab TMD Toolbox
-      uses: actions/checkout@v4
-      with:
-        repository: EarthAndSpaceResearch/TMD_Matlab_Toolbox_v2.5
-        path: TMD_Matlab_Toolbox
-        ref: master
-    - name: Fetch test data
-      run: |
-        # install the package in editable mode
-        pip install --no-deps --editable .
-        # download test data
-        pixi run fetch
+        flake8 pyTMD_turbo --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pixi run coverage
+        pytest --cov=pyTMD_turbo --junitxml=pytest.xml --cov-report=xml
     - name: Create coverage comment
       uses: MishaKav/pytest-coverage-comment@main
       with:
         pytest-xml-coverage-path: coverage.xml
         junitxml-path: pytest.xml
-        unique-id-for-comment: ${{ matrix.os }}
-        title: Coverage for Python on ${{ matrix.os }}
+        unique-id-for-comment: ${{ matrix.os }}-${{ matrix.python-version }}
+        title: Coverage for Python ${{ matrix.python-version }} on ${{ matrix.os }}
     - name: Archive code coverage results
       uses: actions/upload-artifact@v4
       with:
-        name: code-coverage-report-${{ matrix.os }}
+        name: code-coverage-report-${{ matrix.os }}-${{ matrix.python-version }}
         path: coverage.xml

@@ -100,10 +100,6 @@ None*.png
 .ipynb_checkpoints
 Untitled.ipynb
 core.*
-# pixi environments
-.pixi/*
-!.pixi/config.toml
-
 # Original pyTMD backup
 pyTMD-v3.0.1/
 -IMPLEMENTATION_STATUS.md

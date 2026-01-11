@@ -84,7 +84,6 @@ line-length = 80
 indent-width = 4
 exclude = [
     ".git",
-    ".pixi",
     "build",
     "doc",
     "run",
@@ -115,33 +114,3 @@ indent-style = "space"
 line-ending = "auto"
 docstring-code-format = false
 
-[tool.pixi.workspace]
-name = "pytmd_turbo"
-authors = ["tkykszk"]
-channels = ["conda-forge"]
-platforms = ["osx-arm64", "linux-64", "win-64"]
-
-[tool.pixi.pypi-dependencies]
-pyTMD_turbo = { path = ".", editable = true }
-
-[tool.pixi.environments]
-default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
-
-[tool.pixi.tasks.test]
-cmd = "pytest"
-description = "Run the pytest suite"
-
-[tool.pixi.tasks.coverage]
-cmd = "pytest --cov=pyTMD_turbo --junitxml=pytest.xml --cov-report=xml"
-description = "Run the pytest suite and create coverage reports"
-
-[tool.pixi.dependencies]
-numpy = "*"
-scipy = ">=1.10.1"
-xarray = "*"
-netcdf4 = "*"
-
-[tool.pixi.feature.dev.dependencies]
-pytest = "*"
-pytest-cov = "*"
