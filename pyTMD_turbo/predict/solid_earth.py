@@ -379,112 +379,142 @@ def solid_earth_tide(
     n_points = xyz.shape[0]
     n_times = len(t)
 
-    # Output arrays
-    dx = np.zeros((n_points, n_times))
-    dy = np.zeros((n_points, n_times))
-    dz = np.zeros((n_points, n_times))
-
-    # Station radii
-    r_station = np.sqrt(np.sum(xyz**2, axis=1))
-
-    for i_t in range(n_times):
-        # Sun and Moon positions at this time
-        sun_pos = sun_xyz[i_t] if sun_xyz.ndim > 1 else sun_xyz
-        moon_pos = moon_xyz[i_t] if moon_xyz.ndim > 1 else moon_xyz
-
-        # Radii to Sun and Moon
-        r_sun = np.sqrt(np.sum(sun_pos**2))
-        r_moon = np.sqrt(np.sum(moon_pos**2))
-
-        for i_p in range(n_points):
-            # Station position
-            pos = xyz[i_p]
-            r_p = r_station[i_p]
-
-            # Unit vectors
-            p_hat = pos / r_p
-            sun_hat = sun_pos / r_sun
-            moon_hat = moon_pos / r_moon
-
-            # Scalar products (cos of angles)
-            cos_psi_sun = np.dot(p_hat, sun_hat)
-            cos_psi_moon = np.dot(p_hat, moon_hat)
-
-            # Latitude-dependent Love number correction (Mathews 1997)
-            cos_lat = np.sqrt(pos[0]**2 + pos[1]**2) / r_p
-            sin_lat_sq = 1.0 - cos_lat**2
-            h2_eff = h2 - 0.0006 * (1 - 1.5 * sin_lat_sq)
-            l2_eff = l2 + 0.0002 * (1 - 1.5 * sin_lat_sq)
-
-            # Degree-2 Legendre polynomial terms
-            P2_sun = 3 * (h2_eff / 2 - l2_eff) * cos_psi_sun**2 - h2_eff / 2
-            P2_moon = 3 * (h2_eff / 2 - l2_eff) * cos_psi_moon**2 - h2_eff / 2
-
-            # Degree-3 Legendre polynomial terms
-            P3_sun = (5/2) * (h3 - 3*l3) * cos_psi_sun**3 + (3/2) * (l3 - h3) * cos_psi_sun
-            P3_moon = (5/2) * (h3 - 3*l3) * cos_psi_moon**3 + (3/2) * (l3 - h3) * cos_psi_moon
-
-            # Scaling factors (mass ratios and distance cubes)
-            F2_sun = mass_ratio_solar * (a_axis / r_sun)**3
-            F2_moon = mass_ratio_lunar * (a_axis / r_moon)**3
-            F3_sun = mass_ratio_solar * (a_axis / r_sun)**4 * (r_p / a_axis)
-            F3_moon = mass_ratio_lunar * (a_axis / r_moon)**4 * (r_p / a_axis)
-
-            # Radial displacement (degree-2 + degree-3)
-            dr_sun = a_axis * F2_sun * (
-                h2_eff * (1.5 * cos_psi_sun**2 - 0.5)
-            ) + a_axis * F3_sun * (
-                h3 * (2.5 * cos_psi_sun**3 - 1.5 * cos_psi_sun)
-            )
-            dr_moon = a_axis * F2_moon * (
-                h2_eff * (1.5 * cos_psi_moon**2 - 0.5)
-            ) + a_axis * F3_moon * (
-                h3 * (2.5 * cos_psi_moon**3 - 1.5 * cos_psi_moon)
-            )
-
-            # Tangential displacement components
-            dt_sun = a_axis * F2_sun * l2_eff * 3 * cos_psi_sun
-            dt_moon = a_axis * F2_moon * l2_eff * 3 * cos_psi_moon
-
-            # Convert to Cartesian displacements
-            # Radial contribution
-            dr_total = dr_sun + dr_moon
-            dx[i_p, i_t] += dr_total * p_hat[0]
-            dy[i_p, i_t] += dr_total * p_hat[1]
-            dz[i_p, i_t] += dr_total * p_hat[2]
-
-            # Tangential contribution (simplified - along Sun/Moon direction)
-            # More accurate would decompose into local North/East
-            sun_tan = sun_hat - cos_psi_sun * p_hat
-            sun_tan_norm = np.sqrt(np.sum(sun_tan**2))
-            if sun_tan_norm > 1e-10:
-                sun_tan /= sun_tan_norm
-                dx[i_p, i_t] += dt_sun * sun_tan[0] * (1 - cos_psi_sun**2)**0.5
-                dy[i_p, i_t] += dt_sun * sun_tan[1] * (1 - cos_psi_sun**2)**0.5
-                dz[i_p, i_t] += dt_sun * sun_tan[2] * (1 - cos_psi_sun**2)**0.5
-
-            moon_tan = moon_hat - cos_psi_moon * p_hat
-            moon_tan_norm = np.sqrt(np.sum(moon_tan**2))
-            if moon_tan_norm > 1e-10:
-                moon_tan /= moon_tan_norm
-                dx[i_p, i_t] += dt_moon * moon_tan[0] * (1 - cos_psi_moon**2)**0.5
-                dy[i_p, i_t] += dt_moon * moon_tan[1] * (1 - cos_psi_moon**2)**0.5
-                dz[i_p, i_t] += dt_moon * moon_tan[2] * (1 - cos_psi_moon**2)**0.5
+    # Use optimized vectorized implementation
+    dx, dy, dz = _solid_earth_tide_vectorized(
+        xyz, sun_xyz, moon_xyz, n_points, n_times,
+        a_axis, h2, l2, h3, l3, mass_ratio_solar, mass_ratio_lunar
+    )
 
     # Convert tide system if needed
     if tide_system.lower() == 'mean_tide':
-        # Add permanent tide correction
-        for i_p in range(n_points):
-            pos = xyz[i_p]
-            r_p = r_station[i_p]
-            sin_lat_sq = (pos[2] / r_p)**2
+        # Add permanent tide correction (vectorized)
+        r_station = np.sqrt(np.sum(xyz**2, axis=1))  # (n_points,)
+        sin_lat_sq = (xyz[:, 2] / r_station)**2  # (n_points,)
+        dr_perm = -0.1206 * (1.5 * sin_lat_sq - 0.5)  # (n_points,)
 
-            # Permanent tide bias (approximate)
-            dr_perm = -0.1206 * (1.5 * sin_lat_sq - 0.5)  # meters
+        # Broadcast to all times
+        p_hat = xyz / r_station[:, np.newaxis]  # (n_points, 3)
+        dx += dr_perm[:, np.newaxis] * p_hat[:, 0:1]
+        dy += dr_perm[:, np.newaxis] * p_hat[:, 1:2]
+        dz += dr_perm[:, np.newaxis] * p_hat[:, 2:3]
 
-            dx[i_p, :] += dr_perm * pos[0] / r_p
-            dy[i_p, :] += dr_perm * pos[1] / r_p
-            dz[i_p, :] += dr_perm * pos[2] / r_p
+    return dx, dy, dz
+
+
+def _solid_earth_tide_vectorized(
+    xyz: np.ndarray,
+    sun_xyz: np.ndarray,
+    moon_xyz: np.ndarray,
+    n_points: int,
+    n_times: int,
+    a_axis: float,
+    h2: float,
+    l2: float,
+    h3: float,
+    l3: float,
+    mass_ratio_solar: float,
+    mass_ratio_lunar: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Vectorized solid Earth tide calculation.
+
+    Optimized to avoid nested loops by using NumPy broadcasting.
+    Handles (n_points, n_times) efficiently.
+    """
+    # Station radii: (n_points,)
+    r_station = np.sqrt(np.sum(xyz**2, axis=1))
+
+    # Unit vectors for stations: (n_points, 3)
+    p_hat = xyz / r_station[:, np.newaxis]
+
+    # Sun/Moon radii: (n_times,)
+    r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
+    r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
+
+    # Unit vectors for Sun/Moon: (n_times, 3)
+    sun_hat = sun_xyz / r_sun[:, np.newaxis]
+    moon_hat = moon_xyz / r_moon[:, np.newaxis]
+
+    # Cosine of angles: (n_points, n_times)
+    # p_hat: (n_points, 3), sun_hat: (n_times, 3)
+    # cos_psi = sum(p_hat[i, :] * sun_hat[j, :]) for all i, j
+    cos_psi_sun = np.einsum('ij,kj->ik', p_hat, sun_hat)  # (n_points, n_times)
+    cos_psi_moon = np.einsum('ij,kj->ik', p_hat, moon_hat)
+
+    # Latitude-dependent Love number correction: (n_points,)
+    cos_lat = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / r_station
+    sin_lat_sq = 1.0 - cos_lat**2
+    h2_eff = h2 - 0.0006 * (1 - 1.5 * sin_lat_sq)  # (n_points,)
+    l2_eff = l2 + 0.0002 * (1 - 1.5 * sin_lat_sq)  # (n_points,)
+
+    # Expand to (n_points, n_times) for broadcasting
+    h2_eff = h2_eff[:, np.newaxis]
+    l2_eff = l2_eff[:, np.newaxis]
+    r_p = r_station[:, np.newaxis]  # (n_points, 1)
+
+    # Scaling factors: (n_times,)
+    F2_sun = mass_ratio_solar * (a_axis / r_sun)**3
+    F2_moon = mass_ratio_lunar * (a_axis / r_moon)**3
+    F3_sun = mass_ratio_solar * (a_axis / r_sun)**4
+    F3_moon = mass_ratio_lunar * (a_axis / r_moon)**4
+
+    # Radial displacement (degree-2 + degree-3): (n_points, n_times)
+    cos2_sun = cos_psi_sun**2
+    cos2_moon = cos_psi_moon**2
+    cos3_sun = cos_psi_sun**3
+    cos3_moon = cos_psi_moon**3
+
+    dr_sun = (a_axis * F2_sun * h2_eff * (1.5 * cos2_sun - 0.5) +
+              (r_p / a_axis) * a_axis * F3_sun * h3 * (2.5 * cos3_sun - 1.5 * cos_psi_sun))
+    dr_moon = (a_axis * F2_moon * h2_eff * (1.5 * cos2_moon - 0.5) +
+               (r_p / a_axis) * a_axis * F3_moon * h3 * (2.5 * cos3_moon - 1.5 * cos_psi_moon))
+
+    # Total radial displacement
+    dr_total = dr_sun + dr_moon  # (n_points, n_times)
+
+    # Radial contribution to ECEF: (n_points, n_times)
+    dx = dr_total * p_hat[:, 0:1]
+    dy = dr_total * p_hat[:, 1:2]
+    dz = dr_total * p_hat[:, 2:3]
+
+    # Tangential displacement magnitude: (n_points, n_times)
+    dt_sun = a_axis * F2_sun * l2_eff * 3 * cos_psi_sun
+    dt_moon = a_axis * F2_moon * l2_eff * 3 * cos_psi_moon
+
+    # Tangential vectors (normalized)
+    # sun_tan[i,j,:] = sun_hat[j,:] - cos_psi_sun[i,j] * p_hat[i,:]
+    # Shape: (n_points, n_times, 3)
+    sun_tan = sun_hat[np.newaxis, :, :] - cos_psi_sun[:, :, np.newaxis] * p_hat[:, np.newaxis, :]
+    moon_tan = moon_hat[np.newaxis, :, :] - cos_psi_moon[:, :, np.newaxis] * p_hat[:, np.newaxis, :]
+
+    # Norms: (n_points, n_times)
+    sun_tan_norm = np.sqrt(np.sum(sun_tan**2, axis=2))
+    moon_tan_norm = np.sqrt(np.sum(moon_tan**2, axis=2))
+
+    # Avoid division by zero
+    sun_tan_norm = np.where(sun_tan_norm > 1e-10, sun_tan_norm, 1.0)
+    moon_tan_norm = np.where(moon_tan_norm > 1e-10, moon_tan_norm, 1.0)
+
+    # Normalize tangential vectors
+    sun_tan = sun_tan / sun_tan_norm[:, :, np.newaxis]
+    moon_tan = moon_tan / moon_tan_norm[:, :, np.newaxis]
+
+    # sin(psi) = sqrt(1 - cos^2(psi))
+    sin_psi_sun = np.sqrt(np.maximum(1 - cos2_sun, 0))
+    sin_psi_moon = np.sqrt(np.maximum(1 - cos2_moon, 0))
+
+    # Tangential contribution
+    dt_sun_scaled = dt_sun * sin_psi_sun  # (n_points, n_times)
+    dt_moon_scaled = dt_moon * sin_psi_moon
+
+    # Add tangential contributions: sun_tan is (n_points, n_times, 3)
+    dx += dt_sun_scaled * sun_tan[:, :, 0]
+    dy += dt_sun_scaled * sun_tan[:, :, 1]
+    dz += dt_sun_scaled * sun_tan[:, :, 2]
+
+    dx += dt_moon_scaled * moon_tan[:, :, 0]
+    dy += dt_moon_scaled * moon_tan[:, :, 1]
+    dz += dt_moon_scaled * moon_tan[:, :, 2]
 
     return dx, dy, dz
 

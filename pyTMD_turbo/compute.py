@@ -401,28 +401,33 @@ def SET_displacements(
             return dx[0], dy[0], dz[0]
         return dx, dy, dz
 
-    # Convert to local (North, East, Up) coordinates
+    # Convert to local (North, East, Up) coordinates using vectorized approach
+    lat_rad = np.radians(y)
+    lon_rad = np.radians(x)
+
+    # Optimized path for single point (most common case in earthquake analysis)
+    if n_points == 1:
+        R = ecef_to_enu_rotation(lat_rad[0], lon_rad[0])
+        # Stack all times: (3, n_times)
+        d_ecef = np.stack([dx[0, :], dy[0, :], dz[0, :]], axis=0)
+        # Matrix multiply: (3, 3) @ (3, n_times) = (3, n_times)
+        d_enu = R @ d_ecef
+        return d_enu[1], d_enu[0], d_enu[2]  # North, East, Up
+
+    # Multiple points: vectorized ECEF->ENU conversion
     dn = np.zeros((n_points, n_times))
     de = np.zeros((n_points, n_times))
     du = np.zeros((n_points, n_times))
 
     for i_p in range(n_points):
-        lat_rad = np.radians(y[i_p])
-        lon_rad = np.radians(x[i_p])
+        R = ecef_to_enu_rotation(lat_rad[i_p], lon_rad[i_p])
+        # Process all times at once: (3, n_times)
+        d_ecef = np.stack([dx[i_p, :], dy[i_p, :], dz[i_p, :]], axis=0)
+        d_enu = R @ d_ecef  # (3, n_times)
+        de[i_p, :] = d_enu[0]  # East
+        dn[i_p, :] = d_enu[1]  # North
+        du[i_p, :] = d_enu[2]  # Up
 
-        # Rotation matrix: ECEF -> ENU (East, North, Up)
-        R = ecef_to_enu_rotation(lat_rad, lon_rad)
-
-        for i_t in range(n_times):
-            d_ecef = np.array([dx[i_p, i_t], dy[i_p, i_t], dz[i_p, i_t]])
-            d_enu = R @ d_ecef
-
-            de[i_p, i_t] = d_enu[0]  # East
-            dn[i_p, i_t] = d_enu[1]  # North
-            du[i_p, i_t] = d_enu[2]  # Up
-
-    if n_points == 1:
-        return dn[0], de[0], du[0]
     return dn, de, du
 
 

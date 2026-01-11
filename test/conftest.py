@@ -7,16 +7,19 @@ import warnings
 _using_fallback = False
 
 # default working data directory for tide models
-# Try pyTMD if available, otherwise use a fallback
-try:
-    from pyTMD.utilities import get_cache_path
-    _default_directory = get_cache_path()
-except ImportError:
-    # Fallback: use environment variable or home directory
-    _default_directory = pathlib.Path(
-        os.environ.get('PYTMD_DATA', pathlib.Path.home() / '.pyTMD')
-    )
-    _using_fallback = True
+# Priority: PYTMD_RESOURCE > pyTMD.utilities.get_cache_path() > PYTMD_DATA > ~/.pyTMD
+if os.environ.get('PYTMD_RESOURCE'):
+    _default_directory = pathlib.Path(os.environ.get('PYTMD_RESOURCE'))
+else:
+    try:
+        from pyTMD.utilities import get_cache_path
+        _default_directory = get_cache_path()
+    except ImportError:
+        # Fallback: use environment variable or home directory
+        _default_directory = pathlib.Path(
+            os.environ.get('PYTMD_DATA', pathlib.Path.home() / '.pyTMD')
+        )
+        _using_fallback = True
 
 
 def pytest_configure(config):
