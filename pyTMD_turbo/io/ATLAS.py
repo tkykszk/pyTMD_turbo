@@ -17,7 +17,7 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Tuple, List, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -25,19 +25,19 @@ if TYPE_CHECKING:
     import xarray as xr
 
 __all__ = [
-    'read_atlas_grid',
-    'read_atlas_elevation',
-    'read_atlas_transport',
-    'open_atlas_grid',
     'open_atlas_elevation',
+    'open_atlas_grid',
     'open_atlas_transport',
     'open_dataset',
+    'read_atlas_elevation',
+    'read_atlas_grid',
+    'read_atlas_transport',
 ]
 
 
 def _read_binary(
-    path: Union[str, pathlib.Path],
-    dtype: Union[np.dtype, str],
+    path: str | pathlib.Path,
+    dtype: np.dtype | str,
     shape: tuple,
     offset: int = 0,
     use_mmap: bool = False,
@@ -61,7 +61,7 @@ def _read_binary(
 
 
 def read_atlas_grid(
-    input_file: Union[str, pathlib.Path],
+    input_file: str | pathlib.Path,
     use_mmap: bool = False,
 ) -> dict:
     """
@@ -237,7 +237,7 @@ def _read_local_grid(
 
 
 def read_atlas_elevation(
-    input_file: Union[str, pathlib.Path],
+    input_file: str | pathlib.Path,
     use_mmap: bool = False,
 ) -> dict:
     """
@@ -317,7 +317,7 @@ def read_atlas_elevation(
 
         # Read sparse data for each constituent
         hc_sparse = []
-        for i in range(nc):
+        for _i in range(nc):
             real_data = _read_binary(input_file, '>f4', (n_valid,), offset=offset, use_mmap=use_mmap)
             offset += 4 * n_valid
             offset += 8
@@ -339,7 +339,7 @@ def read_atlas_elevation(
 
 
 def read_atlas_transport(
-    input_file: Union[str, pathlib.Path],
+    input_file: str | pathlib.Path,
     use_mmap: bool = False,
 ) -> dict:
     """
@@ -424,9 +424,9 @@ def read_atlas_transport(
 
 
 def open_atlas_grid(
-    grid_file: Union[str, pathlib.Path],
+    grid_file: str | pathlib.Path,
     use_mmap: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read ATLAS grid file and return as xarray Dataset
 
@@ -474,11 +474,11 @@ def open_atlas_grid(
 
 
 def open_atlas_elevation(
-    elevation_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    elevation_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     use_mmap: bool = False,
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read ATLAS elevation file and return as xarray Dataset
 
@@ -559,12 +559,12 @@ def open_atlas_elevation(
 
 
 def open_atlas_transport(
-    transport_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    transport_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     use_mmap: bool = False,
     apply_mask: bool = True,
     convert_to_velocity: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read ATLAS transport file and return as xarray Dataset
 
@@ -656,13 +656,13 @@ def open_atlas_transport(
 
 
 def open_dataset(
-    model_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    model_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     group: str = 'z',
     use_mmap: bool = False,
     apply_mask: bool = True,
     convert_to_velocity: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Open ATLAS tidal model as xarray Dataset
 

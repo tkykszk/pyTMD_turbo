@@ -13,47 +13,45 @@ Copyright (c) 2024-2026 tkykszk
 Derived from pyTMD by Tyler Sutterley (MIT License)
 """
 
-from .model import model, load_database
-from .dataset import TMDAccessor, register_accessor
-from . import OTIS
-from . import ATLAS
-from . import FES
-from .OTIS import (
-    open_dataset,
-    open_otis_grid,
-    open_otis_elevation,
-    open_otis_transport,
-    open_mfdataset,
-)
+from . import ATLAS, FES, OTIS
 from .ATLAS import (
-    open_atlas_grid,
     open_atlas_elevation,
+    open_atlas_grid,
     open_atlas_transport,
 )
+from .dataset import TMDAccessor, register_accessor
 from .FES import (
     open_fes_elevation,
     open_fes_transport,
 )
+from .model import load_database, model
+from .OTIS import (
+    open_dataset,
+    open_mfdataset,
+    open_otis_elevation,
+    open_otis_grid,
+    open_otis_transport,
+)
 
 __all__ = [
-    'model',
-    'load_database',
-    'OTIS',
     'ATLAS',
     'FES',
+    'OTIS',
     'TMDAccessor',
-    'register_accessor',
-    # OTIS functions
-    'open_dataset',
-    'open_otis_grid',
-    'open_otis_elevation',
-    'open_otis_transport',
-    'open_mfdataset',
+    'load_database',
+    'model',
+    'open_atlas_elevation',
     # ATLAS functions
     'open_atlas_grid',
-    'open_atlas_elevation',
     'open_atlas_transport',
+    # OTIS functions
+    'open_dataset',
     # FES functions
     'open_fes_elevation',
     'open_fes_transport',
+    'open_mfdataset',
+    'open_otis_elevation',
+    'open_otis_grid',
+    'open_otis_transport',
+    'register_accessor',
 ]

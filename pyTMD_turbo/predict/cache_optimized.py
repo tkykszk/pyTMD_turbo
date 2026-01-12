@@ -14,11 +14,10 @@ See LICENSE file for details.
 """
 
 import warnings
+from dataclasses import dataclass
+
 import numpy as np
 from scipy import ndimage
-from typing import Dict, List, Tuple
-from dataclasses import dataclass
-from pathlib import Path
 
 # Import from pyTMD_turbo modules (standalone)
 from pyTMD_turbo import constituents as _constituents
@@ -30,7 +29,7 @@ class CachedModelOptimized:
     """Optimised cached tidal model"""
     name: str
     format: str
-    constituents: List[str]
+    constituents: list[str]
     corrections: str       # Correction type ('GOT' or 'OTIS')
 
     # Grid data (global)
@@ -40,8 +39,8 @@ class CachedModelOptimized:
     dlat: float
 
     # Complex grid (per constituent)
-    hc_real: Dict[str, np.ndarray]
-    hc_imag: Dict[str, np.ndarray]
+    hc_real: dict[str, np.ndarray]
+    hc_imag: dict[str, np.ndarray]
 
     # Constituent parameters (array format)
     omega: np.ndarray      # Angular frequency, shape (n_constituents,)
@@ -72,8 +71,8 @@ class OceanTideCacheOptimized:
     MJD_TIDE = 48622.0
 
     def __init__(self):
-        self.models: Dict[str, CachedModelOptimized] = {}
-        self._model_dirs: Dict[str, str] = {}
+        self.models: dict[str, CachedModelOptimized] = {}
+        self._model_dirs: dict[str, str] = {}
 
     def load_model(self, model_name: str, directory: str = '~/.cache/pytmd',
                    group: str = 'z') -> None:
@@ -125,7 +124,7 @@ class OceanTideCacheOptimized:
                             break
                     else:
                         # Use first data variable
-                        var_name = list(ds.data_vars)[0]
+                        var_name = next(iter(ds.data_vars))
                         data = ds[var_name].sel(constituent=const_name).values
 
                 if np.iscomplexobj(data):
@@ -201,7 +200,7 @@ class OceanTideCacheOptimized:
 
     def interpolate_batch(self, model_name: str,
                           lats: np.ndarray,
-                          lons: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                          lons: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Batch interpolation of harmonic constants for multiple locations
 
@@ -250,8 +249,8 @@ class OceanTideCacheOptimized:
         return np.array(hc_real_list).T, np.array(hc_imag_list).T
 
     def get_nodal_corrections(self, mjd: np.ndarray,
-                              constituents: List[str],
-                              corrections: str = 'OTIS') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                              constituents: list[str],
+                              corrections: str = 'OTIS') -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Get nodal corrections
 

@@ -11,7 +11,7 @@ High-performance tidal prediction module - a derivative work of [pyTMD](https://
 
 | Item | Status |
 |------|--------|
-| Version | 0.1.0 (Technical Preview) |
+| Version | 0.2.1 (Technical Preview) |
 | Implementation | ~58% of pyTMD features |
 | Tests | 119 passed |
 | Stability | Experimental |

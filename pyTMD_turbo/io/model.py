@@ -13,8 +13,8 @@ from __future__ import annotations
 import json
 import pathlib
 import warnings
+
 import numpy as np
-from typing import Optional, Dict, List, Any
 
 from .. import cache as cache_module
 
@@ -25,7 +25,7 @@ except ImportError:
     HAS_XARRAY = False
 
 try:
-    import netCDF4
+    import netCDF4  # noqa: F401
     HAS_NETCDF4 = True
 except ImportError:
     HAS_NETCDF4 = False
@@ -81,7 +81,7 @@ class DataBase:
         return str(self.__dict__)
 
 
-def load_database(extra_databases: list = []) -> DataBase:
+def load_database(extra_databases: list | None = None) -> DataBase:
     """
     Load the JSON database of model files
 
@@ -96,7 +96,9 @@ def load_database(extra_databases: list = []) -> DataBase:
         Model database object
     """
     # Load default database
-    with open(_database_file, 'r', encoding='utf-8') as f:
+    if extra_databases is None:
+        extra_databases = []
+    with open(_database_file, encoding='utf-8') as f:
         database = json.load(f)
 
     # Merge extra databases
@@ -104,7 +106,7 @@ def load_database(extra_databases: list = []) -> DataBase:
         if isinstance(extra, dict):
             database.update(extra)
         elif isinstance(extra, (str, pathlib.Path)):
-            with open(extra, 'r', encoding='utf-8') as f:
+            with open(extra, encoding='utf-8') as f:
                 database.update(json.load(f))
 
     return DataBase(database)
@@ -129,7 +131,7 @@ class model:
         List of tidal constituents
     """
 
-    def __init__(self, directory: Optional[str] = None, **kwargs):
+    def __init__(self, directory: str | None = None, **kwargs):
         # Set directory
         if directory is None:
             self.directory = _get_cache_path()
@@ -148,7 +150,7 @@ class model:
         self.projection = None
         self._database = None
 
-    def from_database(self, model_name: str, group: str = 'z') -> 'model':
+    def from_database(self, model_name: str, group: str = 'z') -> model:
         """
         Load model parameters from database
 
@@ -235,7 +237,7 @@ class model:
         params = self._database.get(self.name, {})
         return 'u' in params and 'v' in params
 
-    def open_dataset(self, use_cache: bool = True, **kwargs) -> 'xr.Dataset':
+    def open_dataset(self, use_cache: bool = True, **kwargs) -> xr.Dataset:
         """
         Open model as xarray Dataset
 
@@ -281,7 +283,7 @@ class model:
         """Get cache file path for this model"""
         return cache_module.get_cache_path(self.name, self.directory)
 
-    def _get_source_files(self) -> List[pathlib.Path]:
+    def _get_source_files(self) -> list[pathlib.Path]:
         """Get list of source files for cache validation"""
         files = []
         if self.model_file:
@@ -293,7 +295,7 @@ class model:
             files.append(pathlib.Path(self.grid_file))
         return files
 
-    def _load_from_cache(self) -> Optional['xr.Dataset']:
+    def _load_from_cache(self) -> xr.Dataset | None:
         """Load model data from cache"""
         cache_path = self._get_cache_path()
         source_files = self._get_source_files()
@@ -347,7 +349,7 @@ class model:
             )
             return None
 
-    def _save_to_cache(self, ds: 'xr.Dataset') -> None:
+    def _save_to_cache(self, ds: xr.Dataset) -> None:
         """Save model data to cache"""
         cache_path = self._get_cache_path()
         source_files = self._get_source_files()
@@ -383,7 +385,7 @@ class model:
                 stacklevel=2
             )
 
-    def _open_got_netcdf(self, **kwargs) -> 'xr.Dataset':
+    def _open_got_netcdf(self, **kwargs) -> xr.Dataset:
         """Open GOT NetCDF format model"""
         # Determine constituent files
         if isinstance(self.model_file, list):
@@ -395,7 +397,7 @@ class model:
             nc_files = sorted(model_dir.glob("*.nc"))
 
         if not nc_files:
-            raise FileNotFoundError(f"No NetCDF files found")
+            raise FileNotFoundError("No NetCDF files found")
 
         # Load all constituents
         datasets = []
@@ -472,12 +474,12 @@ class model:
         self.constituents = constituents
         return combined
 
-    def _open_got_ascii(self, **kwargs) -> 'xr.Dataset':
+    def _open_got_ascii(self, **kwargs) -> xr.Dataset:
         """Open GOT ASCII format model"""
         # GOT ASCII format: similar to NetCDF but text-based
         raise NotImplementedError("GOT ASCII format not yet implemented")
 
-    def _open_otis(self, **kwargs) -> 'xr.Dataset':
+    def _open_otis(self, **kwargs) -> xr.Dataset:
         """Open OTIS/ATLAS format model"""
         from . import OTIS
 
@@ -505,7 +507,7 @@ class model:
 
         return ds
 
-    def _open_fes_netcdf(self, **kwargs) -> 'xr.Dataset':
+    def _open_fes_netcdf(self, **kwargs) -> xr.Dataset:
         """Open FES NetCDF format model"""
         # FES models have one file per constituent
         model_dir = self.model_file.parent if self.model_file else self.directory

@@ -17,34 +17,34 @@ import warnings
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Optional, Union
 
 import numpy as np
 
 __all__ = [
-    # Enable/disable
-    'enable_cache',
-    'disable_cache',
-    'enable_cache_for',
-    'disable_cache_for',
-    # Temp cache
-    'enable_temp_cache',
-    'disable_temp_cache',
     # Context managers
     'cache_disabled',
     'cache_disabled_for',
-    # Cache operations
-    'rebuild_cache',
-    'rebuild_all_cache',
-    'clear_cache',
     'clear_all_cache',
-    # Status
-    'show_cache_status',
+    'clear_cache',
+    'disable_cache',
+    'disable_cache_for',
+    'disable_temp_cache',
+    # Enable/disable
+    'enable_cache',
+    'enable_cache_for',
+    # Temp cache
+    'enable_temp_cache',
     'get_cache_info',
+    'get_cache_path',
     # Low-level
     'is_cache_enabled',
     'is_cache_enabled_for',
-    'get_cache_path',
+    'rebuild_all_cache',
+    # Cache operations
+    'rebuild_cache',
+    # Status
+    'show_cache_status',
 ]
 
 
@@ -58,10 +58,10 @@ class _CacheState:
     def __init__(self):
         self._lock = threading.Lock()
         self._global_enabled = True
-        self._disabled_models: Set[str] = set()
+        self._disabled_models: set[str] = set()
         self._temp_mode = False
-        self._temp_cache_files: Set[Path] = set()
-        self._known_caches: Dict[str, Path] = {}  # model_name -> cache_path
+        self._temp_cache_files: set[Path] = set()
+        self._known_caches: dict[str, Path] = {}  # model_name -> cache_path
 
         # Read environment variables
         self._init_from_env()
@@ -138,7 +138,7 @@ class _CacheState:
         with self._lock:
             self._known_caches[model_name] = cache_path
 
-    def get_known_caches(self) -> Dict[str, Path]:
+    def get_known_caches(self) -> dict[str, Path]:
         with self._lock:
             return dict(self._known_caches)
 
@@ -338,7 +338,7 @@ def get_cache_path(model_name: str, model_directory: Union[str, Path]) -> Path:
         return model_dir / ".pytmd_turbo_cache.npz"
 
 
-def _get_source_mtime(model_directory: Union[str, Path], model_files: List[Path]) -> float:
+def _get_source_mtime(model_directory: Union[str, Path], model_files: list[Path]) -> float:
     """Get the latest modification time of source files.
 
     Parameters
@@ -371,8 +371,8 @@ def _get_source_mtime(model_directory: Union[str, Path], model_files: List[Path]
 def save_cache(
     model_name: str,
     cache_path: Path,
-    data: Dict[str, np.ndarray],
-    source_files: List[Path],
+    data: dict[str, np.ndarray],
+    source_files: list[Path],
 ) -> None:
     """Save data to cache file.
 
@@ -431,8 +431,8 @@ def save_cache(
 def load_cache(
     model_name: str,
     cache_path: Path,
-    source_files: Optional[List[Path]] = None,
-) -> Optional[Dict[str, np.ndarray]]:
+    source_files: Optional[list[Path]] = None,
+) -> Optional[dict[str, np.ndarray]]:
     """Load data from cache file.
 
     Parameters
@@ -524,7 +524,7 @@ def clear_all_cache() -> int:
     caches = _state.get_known_caches()
     deleted = 0
 
-    for model_name, cache_path in caches.items():
+    for _model_name, cache_path in caches.items():
         if cache_path.exists():
             try:
                 cache_path.unlink()
@@ -573,7 +573,7 @@ def rebuild_all_cache() -> int:
 # Status Functions
 # =============================================================================
 
-def get_cache_info() -> List[Dict]:
+def get_cache_info() -> list[dict]:
     """Get information about all known caches.
 
     Returns

@@ -14,10 +14,11 @@ See LICENSE file for details.
 """
 
 import warnings
-import numpy as np
 from datetime import datetime, timezone
-from typing import Optional, Union
 from pathlib import Path
+from typing import Optional
+
+import numpy as np
 
 from .predict.cache_optimized import OceanTideCacheOptimized
 
@@ -269,7 +270,7 @@ def _ensure_current_model_loaded(model: str, directory: Optional[str] = None) ->
             _cache_u.load_model(model, directory, group='u')
             _loaded_models_u.add(model)
         except (ValueError, FileNotFoundError) as e:
-            raise ValueError(f"Model '{model}' does not have current (u) data: {e}")
+            raise ValueError(f"Model '{model}' does not have current (u) data: {e}") from e
 
     # Load v component
     if model not in _loaded_models_v:
@@ -279,7 +280,7 @@ def _ensure_current_model_loaded(model: str, directory: Optional[str] = None) ->
             _cache_v.load_model(model, directory, group='v')
             _loaded_models_v.add(model)
         except (ValueError, FileNotFoundError) as e:
-            raise ValueError(f"Model '{model}' does not have current (v) data: {e}")
+            raise ValueError(f"Model '{model}' does not have current (v) data: {e}") from e
 
 
 def SET_displacements(
@@ -350,9 +351,9 @@ def SET_displacements(
     >>> times = np.arange('2024-01-01', '2024-01-02', dtype='datetime64[h]')
     >>> dn, de, du = pytmd.SET_displacements(x, y, times)
     """
+    from .astro.ephemeris import lunar_ecef, solar_ecef
+    from .predict.solid_earth import ecef_to_enu_rotation, solid_earth_tide
     from .spatial import to_cartesian
-    from .astro.ephemeris import solar_ecef, lunar_ecef
-    from .predict.solid_earth import solid_earth_tide, ecef_to_enu_rotation
 
     # Convert times to MJD
     if isinstance(times[0], np.datetime64):

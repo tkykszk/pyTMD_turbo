@@ -16,8 +16,9 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from typing import List, Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -25,12 +26,12 @@ if TYPE_CHECKING:
 from pyTMD_turbo import constituents as _constituents
 
 __all__ = [
-    'infer_minor',
-    'infer_diurnal',
-    'infer_semi_diurnal',
-    'MINOR_CONSTITUENTS',
     'DIURNAL_MINORS',
+    'MINOR_CONSTITUENTS',
     'SEMI_DIURNAL_MINORS',
+    'infer_diurnal',
+    'infer_minor',
+    'infer_semi_diurnal',
 ]
 
 # Minor constituent groups
@@ -44,7 +45,7 @@ _MJD_TIDE = 48622.0
 
 
 def _get_constituent_amplitude(
-    ds: 'xr.Dataset',
+    ds: xr.Dataset,
     constituent: str,
 ) -> np.ndarray:
     """
@@ -67,9 +68,8 @@ def _get_constituent_amplitude(
     # Check if constituent exists
     if 'constituent' in ds.dims:
         constituents_in_ds = [str(c).lower() for c in ds.coords['constituent'].values]
-        if const_lower in constituents_in_ds:
-            if 'hc' in ds.data_vars:
-                return ds['hc'].sel(constituent=constituent).values
+        if const_lower in constituents_in_ds and 'hc' in ds.data_vars:
+            return ds['hc'].sel(constituent=constituent).values
     elif const_lower in ds.data_vars:
         return ds[const_lower].values
 
@@ -79,10 +79,10 @@ def _get_constituent_amplitude(
 
 def infer_diurnal(
     mjd: np.ndarray,
-    ds: 'xr.Dataset',
+    ds: xr.Dataset,
     method: str = 'linear',
     corrections: str = 'GOT',
-    deltat: Optional[np.ndarray] = None,
+    deltat: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Infer minor diurnal tidal constituents
@@ -195,10 +195,10 @@ def infer_diurnal(
 
 def infer_semi_diurnal(
     mjd: np.ndarray,
-    ds: 'xr.Dataset',
+    ds: xr.Dataset,
     method: str = 'linear',
     corrections: str = 'GOT',
-    deltat: Optional[np.ndarray] = None,
+    deltat: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Infer minor semi-diurnal tidal constituents
@@ -296,10 +296,10 @@ def infer_semi_diurnal(
 
 def infer_minor(
     mjd: np.ndarray,
-    ds: 'xr.Dataset',
+    ds: xr.Dataset,
     method: str = 'linear',
     corrections: str = 'GOT',
-    deltat: Optional[np.ndarray] = None,
+    deltat: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Infer all minor tidal constituents

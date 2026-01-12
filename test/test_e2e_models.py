@@ -431,5 +431,229 @@ class TestAccuracyReport:
             f"Mean RMS error too large: {np.mean(rms_errors)*100:.2f} cm"
 
 
+class TestFES2014:
+    """End-to-end tests for FES2014 model"""
+
+    @pytest.fixture(autouse=True)
+    def skip_if_no_data(self):
+        if not resource_available('fes2014'):
+            pytest.skip("FES2014 data not available")
+
+    def test_constituents(self):
+        """Test FES2014 constituents (34 components)"""
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('FES2014')
+        ds = m.open_dataset(group='z')
+
+        constituents = list(ds.data_vars.keys())
+        print(f"\nFES2014 constituents ({len(constituents)}): {constituents}")
+
+        # FES2014 should have 34 constituents
+        assert len(constituents) >= 30, \
+            f"FES2014 should have ~34 constituents, got {len(constituents)}"
+
+    def test_tide_prediction_single_point(self):
+        """Compare tide prediction at a single point"""
+        import pyTMD_turbo.compute as turbo_compute
+
+        # Test location (Atlantic Ocean)
+        lon, lat = -30.0, 40.0
+
+        # Time range
+        mjd = 60000.0 + np.arange(24) / 24.0
+
+        # pyTMD prediction
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('FES2014')
+        ds = m.open_dataset(group='z', use_default_units=True)
+
+        X, Y = ds.tmd.transform_as(lon, lat, crs=4326)
+        local = ds.tmd.interp(X, Y)
+
+        ts = timescale.time.Timescale(MJD=mjd)
+        tide_pytmd = local.tmd.predict(
+            ts.tide,
+            deltat=ts.tt_ut1,
+            corrections='FES'
+        ).values
+
+        # pyTMD_turbo prediction
+        turbo_compute.init_model('FES2014', PYTMD_RESOURCE)
+        tide_turbo = turbo_compute.predict_single(
+            lat, lon, mjd,
+            model='FES2014',
+            directory=PYTMD_RESOURCE
+        )
+
+        # Compare results
+        corr = np.corrcoef(tide_pytmd, tide_turbo)[0, 1]
+        rms = np.sqrt(np.mean((tide_pytmd - tide_turbo)**2))
+
+        print(f"\nFES2014 single point test:")
+        print(f"  Location: ({lat}, {lon})")
+        print(f"  Correlation: {corr:.6f}")
+        print(f"  RMS difference: {rms*100:.3f} cm")
+
+        assert corr > 0.95, f"Correlation too low: {corr:.4f}"
+        assert rms < 0.15, f"RMS difference too large: {rms*100:.2f} cm"
+
+
+class TestFES2022:
+    """End-to-end tests for FES2022 model"""
+
+    @pytest.fixture(autouse=True)
+    def skip_if_no_data(self):
+        if not resource_available('fes2022b'):
+            pytest.skip("FES2022 data not available")
+
+    def test_constituents(self):
+        """Test FES2022 constituents"""
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('FES2022')
+        ds = m.open_dataset(group='z')
+
+        constituents = list(ds.data_vars.keys())
+        print(f"\nFES2022 constituents ({len(constituents)}): {constituents}")
+
+        # FES2022 should have similar number of constituents as FES2014
+        assert len(constituents) >= 30, \
+            f"FES2022 should have ~34 constituents, got {len(constituents)}"
+
+    def test_tide_prediction_single_point(self):
+        """Compare tide prediction at a single point"""
+        import pyTMD_turbo.compute as turbo_compute
+
+        # Test location (Mediterranean Sea)
+        lon, lat = 15.0, 38.0
+
+        # Time range
+        mjd = 60000.0 + np.arange(24) / 24.0
+
+        # pyTMD prediction
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('FES2022')
+        ds = m.open_dataset(group='z', use_default_units=True)
+
+        X, Y = ds.tmd.transform_as(lon, lat, crs=4326)
+        local = ds.tmd.interp(X, Y)
+
+        ts = timescale.time.Timescale(MJD=mjd)
+        tide_pytmd = local.tmd.predict(
+            ts.tide,
+            deltat=ts.tt_ut1,
+            corrections='FES'
+        ).values
+
+        # pyTMD_turbo prediction
+        turbo_compute.init_model('FES2022', PYTMD_RESOURCE)
+        tide_turbo = turbo_compute.predict_single(
+            lat, lon, mjd,
+            model='FES2022',
+            directory=PYTMD_RESOURCE
+        )
+
+        # Compare results
+        corr = np.corrcoef(tide_pytmd, tide_turbo)[0, 1]
+        rms = np.sqrt(np.mean((tide_pytmd - tide_turbo)**2))
+
+        print(f"\nFES2022 single point test:")
+        print(f"  Location: ({lat}, {lon})")
+        print(f"  Correlation: {corr:.6f}")
+        print(f"  RMS difference: {rms*100:.3f} cm")
+
+        assert corr > 0.95, f"Correlation too low: {corr:.4f}"
+        assert rms < 0.15, f"RMS difference too large: {rms*100:.2f} cm"
+
+
+class TestTPXO9:
+    """End-to-end tests for TPXO9-atlas model"""
+
+    @pytest.fixture(autouse=True)
+    def skip_if_no_data(self):
+        if not resource_available('TPXO9-atlas-v5'):
+            pytest.skip("TPXO9-atlas-v5 data not available")
+
+    def test_constituents(self):
+        """Test TPXO9 constituents"""
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('TPXO9-atlas-v5')
+        ds = m.open_dataset(group='z')
+
+        constituents = list(ds.data_vars.keys())
+        print(f"\nTPXO9 constituents ({len(constituents)}): {constituents}")
+
+        # TPXO9 typically has 15 constituents
+        expected = ['m2', 's2', 'n2', 'k2', 'k1', 'o1', 'p1', 'q1']
+        for c in expected:
+            assert c in constituents, f"Missing constituent: {c}"
+
+    def test_tide_prediction_single_point(self):
+        """Compare tide prediction at a single point"""
+        import pyTMD_turbo.compute as turbo_compute
+
+        # Test location (Pacific Ocean)
+        lon, lat = -150.0, 20.0
+
+        # Time range
+        mjd = 60000.0 + np.arange(24) / 24.0
+
+        # pyTMD prediction
+        m = pyTMD.io.model(directory=PYTMD_RESOURCE).from_database('TPXO9-atlas-v5')
+        ds = m.open_dataset(group='z', use_default_units=True)
+
+        X, Y = ds.tmd.transform_as(lon, lat, crs=4326)
+        local = ds.tmd.interp(X, Y)
+
+        ts = timescale.time.Timescale(MJD=mjd)
+        tide_pytmd = local.tmd.predict(
+            ts.tide,
+            deltat=ts.tt_ut1,
+            corrections='OTIS'
+        ).values
+
+        # pyTMD_turbo prediction
+        turbo_compute.init_model('TPXO9-atlas-v5', PYTMD_RESOURCE)
+        tide_turbo = turbo_compute.predict_single(
+            lat, lon, mjd,
+            model='TPXO9-atlas-v5',
+            directory=PYTMD_RESOURCE
+        )
+
+        # Compare results
+        corr = np.corrcoef(tide_pytmd, tide_turbo)[0, 1]
+        rms = np.sqrt(np.mean((tide_pytmd - tide_turbo)**2))
+
+        print(f"\nTPXO9 single point test:")
+        print(f"  Location: ({lat}, {lon})")
+        print(f"  Correlation: {corr:.6f}")
+        print(f"  RMS difference: {rms*100:.3f} cm")
+
+        assert corr > 0.95, f"Correlation too low: {corr:.4f}"
+        assert rms < 0.15, f"RMS difference too large: {rms*100:.2f} cm"
+
+    def test_tide_prediction_batch(self):
+        """Test batch prediction for TPXO9"""
+        import pyTMD_turbo.compute as turbo_compute
+
+        # Multiple Pacific Ocean points
+        lons = np.array([-160.0, -150.0, -140.0])
+        lats = np.array([15.0, 20.0, 25.0])
+
+        # Time range
+        mjd = 60000.0 + np.arange(48) / 24.0
+
+        # pyTMD_turbo batch prediction
+        turbo_compute.init_model('TPXO9-atlas-v5', PYTMD_RESOURCE)
+        tide_turbo = turbo_compute.predict_batch(
+            lats, lons, mjd,
+            model='TPXO9-atlas-v5',
+            directory=PYTMD_RESOURCE
+        )
+
+        print(f"\nTPXO9 batch test: {len(lats)} points x {len(mjd)} times")
+        print(f"  Shape: {tide_turbo.shape}")
+        print(f"  Range: {np.nanmin(tide_turbo):.3f} to {np.nanmax(tide_turbo):.3f} m")
+
+        # Basic sanity checks
+        assert tide_turbo.shape == (len(lats), len(mjd))
+        assert not np.all(np.isnan(tide_turbo)), "All values are NaN"
+        assert np.nanmax(np.abs(tide_turbo)) < 5.0, "Tide values unreasonably large"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

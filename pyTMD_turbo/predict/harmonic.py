@@ -13,9 +13,10 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
 
 
 @dataclass
@@ -36,7 +37,7 @@ class HarmonicConstants:
     phase_0 : np.ndarray
         Phase-0, shape (n_constituents,)
     """
-    constituents: List[str]
+    constituents: list[str]
     hc_real: np.ndarray
     hc_imag: np.ndarray
     omega: np.ndarray
@@ -66,7 +67,7 @@ def predict_vectorized(hc: HarmonicConstants,
     np.ndarray
         Tide height, shape (n_points, n_times)
     """
-    n_points = hc.hc_real.shape[0]
+    hc.hc_real.shape[0]
     n_times = len(t_days)
     n_const = len(hc.constituents)
 
@@ -155,7 +156,7 @@ def predict_single_point(hc_real: np.ndarray,
 
 
 def get_nodal_corrections(mjd: np.ndarray,
-                          constituents: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+                          constituents: list[str]) -> tuple[np.ndarray, np.ndarray]:
     """
     Get nodal corrections
 
@@ -196,7 +197,7 @@ class FastHarmonicPredictor:
         self.lons: Optional[np.ndarray] = None
 
     def set_constants(self,
-                      constituents: List[str],
+                      constituents: list[str],
                       hc_real: np.ndarray,
                       hc_imag: np.ndarray,
                       omega: np.ndarray,

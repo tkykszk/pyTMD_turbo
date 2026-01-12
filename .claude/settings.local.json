@@ -21,7 +21,18 @@
       "Bash(git reset:*)",
       "Bash(gh repo view:*)",
       "Bash(gh api:*)",
-      "Bash(gh repo edit:*)"
+      "Bash(gh repo edit:*)",
+      "Bash(open:*)",
+      "Bash(git tag:*)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo status)",
+      "Bash(ssh opus@pc263.local \"echo ''opus ALL=\\(ALL\\) NOPASSWD: ALL'' | sudo tee /etc/sudoers.d/opus && sudo chmod 440 /etc/sudoers.d/opus\")",
+      "Bash(ssh -t opus@pc263.local \"echo ''opus ALL=\\(ALL\\) NOPASSWD: ALL'' | sudo tee /etc/sudoers.d/opus && sudo chmod 440 /etc/sudoers.d/opus\")",
+      "Bash(ssh:*)",
+      "Bash(PYTMD_RESOURCE=/Users/taka/Documents/python/eq/LargeFiles python:*)",
+      "Bash(ruff check:*)",
+      "Bash(pip-audit:*)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo log --oneline -5)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo add -A)"
     ]
   }
 }

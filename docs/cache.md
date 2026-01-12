@@ -9,7 +9,7 @@
 
 ### Overview
 
-pyTMD_turbo's cache system provides **zero-config acceleration** for tidal model loading. By caching pre-processed model data in compressed NPZ format, repeated model loads are 10-100x faster.
+pyTMD_turbo's cache system provides **zero-config acceleration** for tidal model loading. By caching pre-processed model data to disk, repeated model loads are 10-100x faster.
 
 ```mermaid
 flowchart TB
@@ -26,11 +26,11 @@ flowchart TB
         NC[Read NetCDF/Binary]
         PA[Parse constituents]
         PR[Process grids]
-        SA[Save to NPZ cache]
+        SA[Save to cache]
     end
 
     subgraph Cache["Cache Loading (Fast)"]
-        LO[Load NPZ directly]
+        LO[Load from cache]
     end
 
     REQ --> EX
@@ -88,7 +88,7 @@ flowchart TD
 
 #### Cache Contents
 
-The NPZ cache contains:
+The cache file contains:
 
 | Key | Description | Shape |
 |-----|-------------|-------|
@@ -307,7 +307,7 @@ gantt
     Parse          :1500, 2100
 
     section With Cache
-    Load NPZ       :0, 20
+    Load cache     :0, 20
 ```
 
 ---
@@ -317,7 +317,7 @@ gantt
 
 ### 概要
 
-pyTMD_turboのキャッシュシステムは、潮汐モデル読み込みの**ゼロ設定高速化**を提供します。前処理済みモデルデータを圧縮NPZ形式でキャッシュすることで、繰り返しのモデル読み込みが10-100倍高速になります。
+pyTMD_turboのキャッシュシステムは、潮汐モデル読み込みの**ゼロ設定高速化**を提供します。前処理済みモデルデータをディスクにキャッシュすることで、繰り返しのモデル読み込みが10-100倍高速になります。
 
 ```mermaid
 flowchart TB

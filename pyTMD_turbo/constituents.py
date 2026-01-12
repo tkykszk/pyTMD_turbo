@@ -18,16 +18,16 @@ from __future__ import annotations
 
 import json
 import pathlib
+
 import numpy as np
-from typing import List, Tuple, Optional
 
 __all__ = [
     'arguments',
-    'frequency',
     'coefficients_table',
-    'nodal_modulation',
+    'frequency',
     'mean_longitudes',
     'minor_arguments',
+    'nodal_modulation',
 ]
 
 # Path to data files
@@ -65,7 +65,7 @@ def polynomial_sum(coefficients: np.ndarray, t: np.ndarray) -> np.ndarray:
 def mean_longitudes(
     MJD: np.ndarray,
     method: str = "Cartwright"
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute the basic astronomical mean longitudes: S, H, P, N and Ps
 
@@ -203,7 +203,7 @@ def coefficients_table(
         Shape: (7, nc) where columns are [tau, s, h, p, n, pp, k]
     """
     # Load coefficients table
-    with open(_coefficients_table, 'r', encoding='utf-8') as f:
+    with open(_coefficients_table, encoding='utf-8') as f:
         coefficients = json.load(f)
 
     # Set s1 coefficients for OTIS type models
@@ -234,7 +234,7 @@ def nodal_modulation(
     p: np.ndarray,
     constituents: list | tuple | np.ndarray | str,
     corrections: str = 'OTIS',
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate nodal corrections for tidal constituents
 
@@ -270,8 +270,8 @@ def nodal_modulation(
     sin2n = np.sin(2.0 * N)
     cos2n = np.cos(2.0 * N)
     sin3n = np.sin(3.0 * N)
-    sinp = np.sin(P)
-    cosp = np.cos(P)
+    np.sin(P)
+    np.cos(P)
     sin2p = np.sin(2.0 * P)
     cos2p = np.cos(2.0 * P)
 
@@ -294,11 +294,7 @@ def nodal_modulation(
             f[:, i] = 1.0
             u[:, i] = 0.0
 
-        elif c_lower in ('msf', 'tau1', 'p1', 'theta1', 'lambda2', 's2') and OTIS_TYPE:
-            f[:, i] = 1.0
-            u[:, i] = 0.0
-
-        elif c_lower in ('p1', 's2') and FES_TYPE:
+        elif (c_lower in ('msf', 'tau1', 'p1', 'theta1', 'lambda2', 's2') and OTIS_TYPE) or (c_lower in ('p1', 's2') and FES_TYPE):
             f[:, i] = 1.0
             u[:, i] = 0.0
 
@@ -368,7 +364,7 @@ def arguments(
     constituents: list | np.ndarray,
     corrections: str = 'OTIS',
     deltat: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate the nodal corrections for tidal constituents
 
@@ -507,7 +503,7 @@ def minor_arguments(
     MJD: np.ndarray,
     deltat: float = 0.0,
     corrections: str = 'OTIS',
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate nodal corrections for minor tidal constituents
 

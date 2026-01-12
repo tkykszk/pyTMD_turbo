@@ -14,10 +14,9 @@ See LICENSE file for details.
 """
 
 import warnings
-import numpy as np
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field
-from pathlib import Path
+
+import numpy as np
 
 
 @dataclass
@@ -35,20 +34,20 @@ class CachedModel:
     """Cached tidal model"""
     name: str
     format: str
-    constituents: List[str]
+    constituents: list[str]
 
     # Grid data (global)
     lon: np.ndarray
     lat: np.ndarray
-    hc_real: Dict[str, np.ndarray]  # Constituent name -> real part grid
-    hc_imag: Dict[str, np.ndarray]  # Constituent name -> imaginary part grid
+    hc_real: dict[str, np.ndarray]  # Constituent name -> real part grid
+    hc_imag: dict[str, np.ndarray]  # Constituent name -> imaginary part grid
 
     # Constituent parameters
-    omega: Dict[str, float]     # Angular frequency (rad/day * 86400)
-    phase_0: Dict[str, float]   # Phase-0 (rad)
+    omega: dict[str, float]     # Angular frequency (rad/day * 86400)
+    phase_0: dict[str, float]   # Phase-0 (rad)
 
     # Interpolated data (specific locations)
-    interpolated: Dict[Tuple[float, float], Dict[str, TidalConstant]] = field(default_factory=dict)
+    interpolated: dict[tuple[float, float], dict[str, TidalConstant]] = field(default_factory=dict)
 
 
 class OceanTideCache:
@@ -72,14 +71,14 @@ class OceanTideCache:
     MJD_TIDE = 48622.0
 
     def __init__(self):
-        self.models: Dict[str, CachedModel] = {}
+        self.models: dict[str, CachedModel] = {}
         self._pytmd_available = self._check_pytmd()
 
     def _check_pytmd(self) -> bool:
         """Check if PyTMD is available"""
         try:
-            import pyTMD.io
             import pyTMD.constituents
+            import pyTMD.io  # noqa: F401
             return True
         except ImportError:
             return False
@@ -98,8 +97,8 @@ class OceanTideCache:
         if not self._pytmd_available:
             raise ImportError("PyTMD is required")
 
-        import pyTMD.io
         import pyTMD.constituents
+        import pyTMD.io
 
         # Create model object
         m = pyTMD.io.model(directory=directory).from_database(model_name)
@@ -161,7 +160,7 @@ class OceanTideCache:
         )
 
     def get_constants(self, model_name: str, lat: float, lon: float,
-                      method: str = 'bilinear') -> Dict[str, TidalConstant]:
+                      method: str = 'bilinear') -> dict[str, TidalConstant]:
         """
         Get harmonic constants for a specified location (returns cached if available)
 
@@ -233,8 +232,8 @@ class OceanTideCache:
         j = (lat - grid_lat[0]) / dlat
 
         if method == 'nearest':
-            i = int(round(i))
-            j = int(round(j))
+            i = round(i)
+            j = round(j)
             i = max(0, min(i, len(grid_lon) - 1))
             j = max(0, min(j, len(grid_lat) - 1))
             return data[j, i]
@@ -273,7 +272,7 @@ class OceanTideCache:
         else:
             raise ValueError(f"Unknown method: {method}")
 
-    def _get_nodal_corrections(self, mjd: np.ndarray, constituents: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+    def _get_nodal_corrections(self, mjd: np.ndarray, constituents: list[str]) -> tuple[np.ndarray, np.ndarray]:
         """
         Get nodal corrections
 

@@ -9,12 +9,13 @@ Verifies the optimized phase calculation module:
 
 import sys
 import time
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pyTMD_turbo.phase import PhaseFitter, fit_phase, NUMBA_AVAILABLE
+from pyTMD_turbo.phase import NUMBA_AVAILABLE, PhaseFitter, fit_phase
 
 
 def test_correctness():
@@ -186,7 +187,7 @@ def test_no_parallel_overhead():
     n_iter = 1000
 
     times = []
-    for trial in range(5):
+    for _trial in range(5):
         start = time.perf_counter()
         for _ in range(n_iter):
             fitter.derivative(t_test)

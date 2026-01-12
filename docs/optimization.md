@@ -13,11 +13,23 @@ pyTMD_turbo achieves significant performance improvements over pyTMD through a c
 
 | Level | Technique | Speedup |
 |-------|-----------|---------|
-| I/O | NPZ Cache | 10-100x (model loading) |
+| I/O | Disk Cache | 10-100x (model loading) |
 | Interpolation | scipy.ndimage.map_coordinates | 5-10x |
 | Harmonic Synthesis | NumPy Vectorization + Matrix Multiplication | 10-50x |
 | Numerical Computation | Numba JIT (optional) | 2-40x |
 | Memory | Pre-computed Parameters | Reduced overhead |
+
+### Benchmark Results (Fair Comparison)
+
+When comparing pyTMD (preloaded) vs pyTMD_turbo (preloaded) for pure computation speed:
+
+| Size   | Calculations | pyTMD    | turbo    | Speedup |
+| ------ | ------------ | -------- | -------- | ------- |
+| Small  | 240          | 450 ms   | 5 ms     | **83x** |
+| Medium | 16,800       | 471 ms   | 66 ms    | **7x**  |
+| Large  | 720,000      | 6,057 ms | 1,297 ms | **5x**  |
+
+Run benchmarks: `python examples/run_benchmark.py`
 
 ### Benchmark Methodology
 
@@ -52,22 +64,22 @@ flowchart LR
 
 The key difference: pyTMD requires separate API calls per time step (drift mode), while pyTMD_turbo processes the entire batch in one call.
 
-### 1. NPZ Cache System
+### 1. Disk Cache System
 
 **Problem**: Loading tidal model files (NetCDF, OTIS binary) is slow due to file I/O and parsing.
 
-**Solution**: Cache pre-processed data in compressed NPZ format.
+**Solution**: Cache pre-processed data to disk.
 
 ```mermaid
 flowchart LR
     subgraph First["First Load"]
         direction LR
-        F1[NetCDF/Binary] --> F2[Parse] --> F3[Process] --> F4[Save NPZ] --> F5[Use]
+        F1[NetCDF/Binary] --> F2[Parse] --> F3[Process] --> F4[Save cache] --> F5[Use]
     end
 
     subgraph Subsequent["Subsequent Loads (10-100x faster)"]
         direction LR
-        S1[NPZ] --> S2[Direct Load] --> S3[Use]
+        S1[Cache] --> S2[Direct Load] --> S3[Use]
     end
 ```
 
@@ -366,7 +378,7 @@ def extrapolate(xs, ys, zs, X, Y, cutoff=np.inf, is_geographic=True):
 ```mermaid
 graph TB
     subgraph APP["Application Level"]
-        A1["NPZ Cache<br/>Skip file I/O (10-100x)"]
+        A1["Disk Cache<br/>Skip file I/O (10-100x)"]
         A2["Batch Processing<br/>Process all points together"]
     end
 
@@ -400,11 +412,23 @@ pyTMD_turbo は複数レベルの最適化技法を組み合わせて、pyTMD �
 
 | レベル | 技法 | 高速化 |
 |--------|------|--------|
-| I/O | NPZキャッシュ | 10-100倍（モデル読込） |
+| I/O | ディスクキャッシュ | 10-100倍（モデル読込） |
 | 補間 | scipy.ndimage.map_coordinates | 5-10倍 |
 | 調和合成 | NumPyベクトル化 + 行列積 | 10-50倍 |
 | 数値計算 | Numba JIT（オプション） | 2-40倍 |
 | メモリ | 事前計算パラメータ | オーバーヘッド削減 |
+
+### ベンチマーク結果（公平な比較）
+
+pyTMD（プリロード済み）vs pyTMD_turbo（プリロード済み）の純粋な計算速度比較：
+
+| サイズ | 計算回数 | pyTMD    | turbo    | 高速化   |
+| ------ | -------- | -------- | -------- | -------- |
+| Small  | 240      | 450 ms   | 5 ms     | **83倍** |
+| Medium | 16,800   | 471 ms   | 66 ms    | **7倍**  |
+| Large  | 720,000  | 6,057 ms | 1,297 ms | **5倍**  |
+
+ベンチマーク実行: `python examples/run_benchmark.py`
 
 ### ベンチマーク方法論
 
@@ -439,22 +463,22 @@ flowchart LR
 
 重要な違い：pyTMDは時刻ごとに個別のAPI呼び出しが必要（driftモード）ですが、pyTMD_turboはバッチ全体を1回の呼び出しで処理します。
 
-### 1. NPZキャッシュシステム
+### 1. ディスクキャッシュシステム
 
 **問題**: 潮汐モデルファイル（NetCDF、OTISバイナリ）の読み込みが遅い。
 
-**解決策**: 前処理済みデータを圧縮NPZ形式でキャッシュ。
+**解決策**: 前処理済みデータをディスクにキャッシュ。
 
 ```mermaid
 flowchart LR
     subgraph First["初回読込"]
         direction LR
-        F1[NetCDF/Binary] --> F2[パース] --> F3[処理] --> F4[NPZ保存] --> F5[使用]
+        F1[NetCDF/Binary] --> F2[パース] --> F3[処理] --> F4[キャッシュ保存] --> F5[使用]
     end
 
     subgraph Subsequent["2回目以降 (10-100倍高速)"]
         direction LR
-        S1[NPZ] --> S2[直接読込] --> S3[使用]
+        S1[キャッシュ] --> S2[直接読込] --> S3[使用]
     end
 ```
 
@@ -753,7 +777,7 @@ def extrapolate(xs, ys, zs, X, Y, cutoff=np.inf, is_geographic=True):
 ```mermaid
 graph TB
     subgraph APP["アプリケーションレベル"]
-        A1["NPZキャッシュ<br/>ファイルI/Oをスキップ (10-100倍)"]
+        A1["ディスクキャッシュ<br/>ファイルI/Oをスキップ (10-100倍)"]
         A2["バッチ処理<br/>全点を一括処理"]
     end
 

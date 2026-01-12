@@ -14,21 +14,21 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
-    import xarray as xr
+    pass
 
 __all__ = [
-    'solid_earth_tide',
     'body_tide',
-    'love_numbers',
     'complex_love_numbers',
+    'latitude_dependence',
+    'love_numbers',
     'out_of_phase_diurnal',
     'out_of_phase_semidiurnal',
-    'latitude_dependence',
+    'solid_earth_tide',
 ]
 
 # Constants
@@ -46,7 +46,7 @@ _l3_default = 0.015
 def love_numbers(
     omega: np.ndarray,
     model: str = 'PREM',
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate frequency-dependent Love numbers
 
@@ -129,7 +129,7 @@ def love_numbers(
 
 def complex_love_numbers(
     omega: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate complex Love numbers following IERS 2010 conventions
 
@@ -165,7 +165,6 @@ def complex_love_numbers(
     # Long-period band - anelasticity model
     lp_mask = np.abs(omega) < 2e-5
     if np.any(lp_mask):
-        alpha = 0.15  # Phase lag
         # Anelasticity correction (simplified)
         h2[lp_mask] = 0.606 - 0.0006j
         k2[lp_mask] = 0.299 - 0.0003j
@@ -188,7 +187,7 @@ def out_of_phase_diurnal(
     moon_xyz: np.ndarray,
     fac_sun: float,
     fac_moon: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate out-of-phase diurnal corrections for mantle anelasticity
 
@@ -211,8 +210,6 @@ def out_of_phase_diurnal(
         Displacement corrections in ECEF (meters)
     """
     # Out-of-phase Love number corrections (IERS 2010)
-    dhi = -0.0025  # Out-of-phase h correction
-    dli = -0.0007  # Out-of-phase l correction
 
     n_points = xyz.shape[0] if xyz.ndim > 1 else 1
     n_times = sun_xyz.shape[0] if sun_xyz.ndim > 1 else 1
@@ -234,7 +231,7 @@ def out_of_phase_semidiurnal(
     moon_xyz: np.ndarray,
     fac_sun: float,
     fac_moon: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate out-of-phase semi-diurnal corrections
 
@@ -257,8 +254,6 @@ def out_of_phase_semidiurnal(
         Displacement corrections in ECEF (meters)
     """
     # Out-of-phase correction for semi-diurnal band
-    dhi = -0.0022  # Out-of-phase h correction
-    dli = -0.0007  # Out-of-phase l correction
 
     n_points = xyz.shape[0] if xyz.ndim > 1 else 1
     n_times = sun_xyz.shape[0] if sun_xyz.ndim > 1 else 1
@@ -277,7 +272,7 @@ def latitude_dependence(
     moon_xyz: np.ndarray,
     fac_sun: float,
     fac_moon: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate latitude-dependent Love number corrections
 
@@ -302,8 +297,6 @@ def latitude_dependence(
         Displacement corrections in local coordinates (meters)
     """
     # Latitude-dependent correction coefficients (IERS 2010)
-    l1d = 0.0012  # Diurnal
-    l1sd = 0.0024  # Semi-diurnal
 
     n_points = len(lat) if hasattr(lat, '__len__') else 1
     n_times = sun_xyz.shape[0] if sun_xyz.ndim > 1 else 1
@@ -320,7 +313,7 @@ def solid_earth_tide(
     xyz: np.ndarray,
     sun_xyz: np.ndarray,
     moon_xyz: np.ndarray,
-    deltat: Union[float, np.ndarray] = 0.0,
+    deltat: float | np.ndarray = 0.0,
     a_axis: float = _a_axis,
     tide_system: str = 'tide_free',
     h2: float = _h2_default,
@@ -329,12 +322,13 @@ def solid_earth_tide(
     l3: float = _l3_default,
     mass_ratio_solar: float = _mass_ratio_solar,
     mass_ratio_lunar: float = _mass_ratio_lunar,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    apply_corrections: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate solid Earth tide displacement in Cartesian coordinates
 
     Implements the IERS Conventions 2010 algorithm for computing
-    solid Earth body tide displacements.
+    solid Earth body tide displacements, including all correction terms.
 
     Parameters
     ----------
@@ -364,6 +358,11 @@ def solid_earth_tide(
         Earth/Sun mass ratio
     mass_ratio_lunar : float
         Earth/Moon mass ratio
+    apply_corrections : bool, default True
+        If True, apply all IERS correction terms:
+        - Out-of-phase diurnal/semidiurnal
+        - Latitude dependence
+        - Frequency dependence (diurnal/long-period)
 
     Returns
     -------
@@ -379,11 +378,51 @@ def solid_earth_tide(
     n_points = xyz.shape[0]
     n_times = len(t)
 
-    # Use optimized vectorized implementation
+    # Use optimized vectorized implementation for main tide
     dx, dy, dz = _solid_earth_tide_vectorized(
         xyz, sun_xyz, moon_xyz, n_points, n_times,
         a_axis, h2, l2, h3, l3, mass_ratio_solar, mass_ratio_lunar
     )
+
+    # Apply IERS correction terms
+    if apply_corrections:
+        # Compute scaling factors for corrections
+        r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
+        r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
+        F2_sun = mass_ratio_solar * a_axis * (a_axis / r_sun)**3
+        F2_moon = mass_ratio_lunar * a_axis * (a_axis / r_moon)**3
+
+        # Out-of-phase corrections
+        dx_d, dy_d, dz_d = _out_of_phase_diurnal(xyz, sun_xyz, moon_xyz, F2_sun, F2_moon)
+        dx += dx_d
+        dy += dy_d
+        dz += dz_d
+
+        dx_sd, dy_sd, dz_sd = _out_of_phase_semidiurnal(xyz, sun_xyz, moon_xyz, F2_sun, F2_moon)
+        dx += dx_sd
+        dy += dy_sd
+        dz += dz_sd
+
+        # Latitude dependence correction
+        dx_lat, dy_lat, dz_lat = _latitude_dependence(xyz, sun_xyz, moon_xyz, F2_sun, F2_moon)
+        dx += dx_lat
+        dy += dy_lat
+        dz += dz_lat
+
+        # Frequency dependence corrections
+        # Convert t (days since 1992-01-01) to MJD
+        MJD_1992 = 48622.0
+        mjd = t + MJD_1992
+
+        dx_fd, dy_fd, dz_fd = _frequency_dependence_diurnal(xyz, mjd, deltat)
+        dx += dx_fd
+        dy += dy_fd
+        dz += dz_fd
+
+        dx_lp, dy_lp, dz_lp = _frequency_dependence_long_period(xyz, mjd, deltat)
+        dx += dx_lp
+        dy += dy_lp
+        dz += dz_lp
 
     # Convert tide system if needed
     if tide_system.lower() == 'mean_tide':
@@ -414,107 +453,105 @@ def _solid_earth_tide_vectorized(
     l3: float,
     mass_ratio_solar: float,
     mass_ratio_lunar: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Vectorized solid Earth tide calculation.
+    Vectorized solid Earth tide calculation following Mathews et al. (1997).
 
     Optimized to avoid nested loops by using NumPy broadcasting.
     Handles (n_points, n_times) efficiently.
+
+    Uses the same formulation as pyTMD:
+        P2 = 3*(h2/2 - l2)*cos²ψ - h2/2
+        X2 = 3*l2*cosψ
+        dX = F2*(X2*S/r_s + P2*X/r)  for each component
     """
     # Station radii: (n_points,)
     r_station = np.sqrt(np.sum(xyz**2, axis=1))
-
-    # Unit vectors for stations: (n_points, 3)
-    p_hat = xyz / r_station[:, np.newaxis]
 
     # Sun/Moon radii: (n_times,)
     r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
     r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
 
-    # Unit vectors for Sun/Moon: (n_times, 3)
-    sun_hat = sun_xyz / r_sun[:, np.newaxis]
-    moon_hat = moon_xyz / r_moon[:, np.newaxis]
+    # Scalar products (cosψ): (n_points, n_times)
+    # XYZ: (n_points, 3), sun_xyz: (n_times, 3)
+    solar_scalar = np.einsum('ij,kj->ik', xyz, sun_xyz) / (r_station[:, np.newaxis] * r_sun)
+    lunar_scalar = np.einsum('ij,kj->ik', xyz, moon_xyz) / (r_station[:, np.newaxis] * r_moon)
 
-    # Cosine of angles: (n_points, n_times)
-    # p_hat: (n_points, 3), sun_hat: (n_times, 3)
-    # cos_psi = sum(p_hat[i, :] * sun_hat[j, :]) for all i, j
-    cos_psi_sun = np.einsum('ij,kj->ik', p_hat, sun_hat)  # (n_points, n_times)
-    cos_psi_moon = np.einsum('ij,kj->ik', p_hat, moon_hat)
+    # Latitude-dependent Love number correction (Mathews et al. 1997)
+    # h2 = h2_nominal - 0.0006*(1 - 3/2*cos²φ)
+    # l2 = l2_nominal + 0.0002*(1 - 3/2*cos²φ)
+    cos_lat = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / r_station  # (n_points,)
+    h2_eff = h2 - 0.0006 * (1.0 - 1.5 * cos_lat**2)  # (n_points,)
+    l2_eff = l2 + 0.0002 * (1.0 - 1.5 * cos_lat**2)  # (n_points,)
 
-    # Latitude-dependent Love number correction: (n_points,)
-    cos_lat = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / r_station
-    sin_lat_sq = 1.0 - cos_lat**2
-    h2_eff = h2 - 0.0006 * (1 - 1.5 * sin_lat_sq)  # (n_points,)
-    l2_eff = l2 + 0.0002 * (1 - 1.5 * sin_lat_sq)  # (n_points,)
-
-    # Expand to (n_points, n_times) for broadcasting
+    # Expand for broadcasting: (n_points, 1)
     h2_eff = h2_eff[:, np.newaxis]
     l2_eff = l2_eff[:, np.newaxis]
-    r_p = r_station[:, np.newaxis]  # (n_points, 1)
+    r_p = r_station[:, np.newaxis]
 
-    # Scaling factors: (n_times,)
-    F2_sun = mass_ratio_solar * (a_axis / r_sun)**3
-    F2_moon = mass_ratio_lunar * (a_axis / r_moon)**3
-    F3_sun = mass_ratio_solar * (a_axis / r_sun)**4
-    F3_moon = mass_ratio_lunar * (a_axis / r_moon)**4
+    # Scaling factors (F2, F3) following Mathews et al. 1997
+    # F2 = mass_ratio * a * (a/r)³
+    F2_sun = mass_ratio_solar * a_axis * (a_axis / r_sun)**3  # (n_times,)
+    F2_moon = mass_ratio_lunar * a_axis * (a_axis / r_moon)**3
+    F3_sun = mass_ratio_solar * a_axis * (a_axis / r_sun)**4
+    F3_moon = mass_ratio_lunar * a_axis * (a_axis / r_moon)**4
 
-    # Radial displacement (degree-2 + degree-3): (n_points, n_times)
-    cos2_sun = cos_psi_sun**2
-    cos2_moon = cos_psi_moon**2
-    cos3_sun = cos_psi_sun**3
-    cos3_moon = cos_psi_moon**3
+    # Compute P2 terms (radial part)
+    # P2 = 3*(h2/2 - l2)*cos²ψ - h2/2
+    cos2_sun = solar_scalar**2
+    cos2_moon = lunar_scalar**2
+    P2_sun = 3.0 * (h2_eff / 2.0 - l2_eff) * cos2_sun - h2_eff / 2.0  # (n_points, n_times)
+    P2_moon = 3.0 * (h2_eff / 2.0 - l2_eff) * cos2_moon - h2_eff / 2.0
 
-    dr_sun = (a_axis * F2_sun * h2_eff * (1.5 * cos2_sun - 0.5) +
-              (r_p / a_axis) * a_axis * F3_sun * h3 * (2.5 * cos3_sun - 1.5 * cos_psi_sun))
-    dr_moon = (a_axis * F2_moon * h2_eff * (1.5 * cos2_moon - 0.5) +
-               (r_p / a_axis) * a_axis * F3_moon * h3 * (2.5 * cos3_moon - 1.5 * cos_psi_moon))
+    # Compute P3 terms (degree-3)
+    # P3 = 5/2*(h3 - 3*l3)*cos³ψ + 3/2*(l3 - h3)*cosψ
+    cos3_sun = solar_scalar**3
+    cos3_moon = lunar_scalar**3
+    P3_sun = (5.0/2.0 * (h3 - 3.0*l3) * cos3_sun +
+              3.0/2.0 * (l3 - h3) * solar_scalar)
+    P3_moon = (5.0/2.0 * (h3 - 3.0*l3) * cos3_moon +
+               3.0/2.0 * (l3 - h3) * lunar_scalar)
 
-    # Total radial displacement
-    dr_total = dr_sun + dr_moon  # (n_points, n_times)
+    # Compute X2 terms (direction of sun/moon)
+    # X2 = 3*l2*cosψ
+    X2_sun = 3.0 * l2_eff * solar_scalar  # (n_points, n_times)
+    X2_moon = 3.0 * l2_eff * lunar_scalar
 
-    # Radial contribution to ECEF: (n_points, n_times)
-    dx = dr_total * p_hat[:, 0:1]
-    dy = dr_total * p_hat[:, 1:2]
-    dz = dr_total * p_hat[:, 2:3]
+    # Compute X3 terms (degree-3 tangential)
+    # X3 = 3*l3/2 * (5*cos²ψ - 1)
+    X3_sun = 3.0 * l3 / 2.0 * (5.0 * cos2_sun - 1.0)
+    X3_moon = 3.0 * l3 / 2.0 * (5.0 * cos2_moon - 1.0)
 
-    # Tangential displacement magnitude: (n_points, n_times)
-    dt_sun = a_axis * F2_sun * l2_eff * 3 * cos_psi_sun
-    dt_moon = a_axis * F2_moon * l2_eff * 3 * cos_psi_moon
+    # Initialize displacement arrays
+    dx = np.zeros((n_points, n_times))
+    dy = np.zeros((n_points, n_times))
+    dz = np.zeros((n_points, n_times))
 
-    # Tangential vectors (normalized)
-    # sun_tan[i,j,:] = sun_hat[j,:] - cos_psi_sun[i,j] * p_hat[i,:]
-    # Shape: (n_points, n_times, 3)
-    sun_tan = sun_hat[np.newaxis, :, :] - cos_psi_sun[:, :, np.newaxis] * p_hat[:, np.newaxis, :]
-    moon_tan = moon_hat[np.newaxis, :, :] - cos_psi_moon[:, :, np.newaxis] * p_hat[:, np.newaxis, :]
+    # Compute displacement for each component (X, Y, Z)
+    # dX = F2*(X2*Sx/r_sun + P2*X/r) + F3*(X3*Sx/r_sun + P3*X/r)
+    for i, _d in enumerate(['X', 'Y', 'Z']):
+        # Station coordinate / radius: (n_points, 1)
+        XYZ_d = xyz[:, i:i+1] / r_p
 
-    # Norms: (n_points, n_times)
-    sun_tan_norm = np.sqrt(np.sum(sun_tan**2, axis=2))
-    moon_tan_norm = np.sqrt(np.sum(moon_tan**2, axis=2))
+        # Sun/Moon coordinate / radius: (n_times,)
+        SXYZ_d = sun_xyz[:, i] / r_sun
+        LXYZ_d = moon_xyz[:, i] / r_moon
 
-    # Avoid division by zero
-    sun_tan_norm = np.where(sun_tan_norm > 1e-10, sun_tan_norm, 1.0)
-    moon_tan_norm = np.where(moon_tan_norm > 1e-10, moon_tan_norm, 1.0)
+        # Degree-2 contributions
+        S2 = F2_sun * (X2_sun * SXYZ_d + P2_sun * XYZ_d)  # (n_points, n_times)
+        L2 = F2_moon * (X2_moon * LXYZ_d + P2_moon * XYZ_d)
 
-    # Normalize tangential vectors
-    sun_tan = sun_tan / sun_tan_norm[:, :, np.newaxis]
-    moon_tan = moon_tan / moon_tan_norm[:, :, np.newaxis]
+        # Degree-3 contributions
+        S3 = F3_sun * (X3_sun * SXYZ_d + P3_sun * XYZ_d)
+        L3 = F3_moon * (X3_moon * LXYZ_d + P3_moon * XYZ_d)
 
-    # sin(psi) = sqrt(1 - cos^2(psi))
-    sin_psi_sun = np.sqrt(np.maximum(1 - cos2_sun, 0))
-    sin_psi_moon = np.sqrt(np.maximum(1 - cos2_moon, 0))
-
-    # Tangential contribution
-    dt_sun_scaled = dt_sun * sin_psi_sun  # (n_points, n_times)
-    dt_moon_scaled = dt_moon * sin_psi_moon
-
-    # Add tangential contributions: sun_tan is (n_points, n_times, 3)
-    dx += dt_sun_scaled * sun_tan[:, :, 0]
-    dy += dt_sun_scaled * sun_tan[:, :, 1]
-    dz += dt_sun_scaled * sun_tan[:, :, 2]
-
-    dx += dt_moon_scaled * moon_tan[:, :, 0]
-    dy += dt_moon_scaled * moon_tan[:, :, 1]
-    dz += dt_moon_scaled * moon_tan[:, :, 2]
+        # Total displacement
+        if i == 0:
+            dx = S2 + L2 + S3 + L3
+        elif i == 1:
+            dy = S2 + L2 + S3 + L3
+        else:
+            dz = S2 + L2 + S3 + L3
 
     return dx, dy, dz
 
@@ -575,10 +612,10 @@ def body_tide(
     lat: np.ndarray,
     lon: np.ndarray,
     mjd: np.ndarray,
-    constituents: Optional[list] = None,
+    constituents: list | None = None,
     h2: float = _h2_default,
     l2: float = _l2_default,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate body tide displacement using spectral method
 
@@ -706,3 +743,430 @@ def body_tide(
         return dn[0], de[0], du[0]
 
     return dn, de, du
+
+
+# =============================================================================
+# IERS Correction Functions (following IERS Conventions 2010)
+# =============================================================================
+
+def _out_of_phase_diurnal(
+    xyz: np.ndarray,
+    sun_xyz: np.ndarray,
+    moon_xyz: np.ndarray,
+    F2_sun: np.ndarray,
+    F2_moon: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Out-of-phase corrections in the diurnal band due to mantle anelasticity.
+
+    Following IERS Conventions 2010, Section 7.1.1.
+
+    Parameters
+    ----------
+    xyz : np.ndarray
+        Station ECEF coordinates (n_points, 3) in meters
+    sun_xyz : np.ndarray
+        Sun ECEF coordinates (n_times, 3) in meters
+    moon_xyz : np.ndarray
+        Moon ECEF coordinates (n_times, 3) in meters
+    F2_sun : np.ndarray
+        Solar scaling factors (n_times,)
+    F2_moon : np.ndarray
+        Lunar scaling factors (n_times,)
+
+    Returns
+    -------
+    dx, dy, dz : np.ndarray
+        ECEF displacement corrections (n_points, n_times) in meters
+    """
+    # Love/Shida number corrections for diurnal band
+    dhi = -0.0025
+    dli = -0.0007
+
+    xyz.shape[0]
+    sun_xyz.shape[0]
+
+    # Station geometry: (n_points,)
+    radius = np.sqrt(np.sum(xyz**2, axis=1))
+    sinphi = xyz[:, 2] / radius
+    cosphi = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / radius
+    cos2phi = cosphi**2 - sinphi**2
+    # Avoid division by zero at poles
+    cosphi_safe = np.where(cosphi > 1e-10, cosphi, 1.0)
+    sinla = xyz[:, 1] / cosphi_safe / radius
+    cosla = xyz[:, 0] / cosphi_safe / radius
+
+    # Sun/Moon radii: (n_times,)
+    r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
+    r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
+
+    # Expand dimensions for broadcasting
+    # sinphi: (n_points,) -> (n_points, 1)
+    sinphi = sinphi[:, np.newaxis]
+    cosphi = cosphi[:, np.newaxis]
+    cos2phi = cos2phi[:, np.newaxis]
+    sinla = sinla[:, np.newaxis]
+    cosla = cosla[:, np.newaxis]
+
+    # Sun Z, X, Y: (n_times,)
+    Sz = sun_xyz[:, 2]
+    Sx = sun_xyz[:, 0]
+    Sy = sun_xyz[:, 1]
+    Lz = moon_xyz[:, 2]
+    Lx = moon_xyz[:, 0]
+    Ly = moon_xyz[:, 1]
+
+    # Common terms: (n_times,)
+    sun_term = Sz * (Sx * sinla - Sy * cosla) / r_sun**2  # (n_points, n_times)
+    moon_term = Lz * (Lx * sinla - Ly * cosla) / r_moon**2
+
+    # Radial corrections: (n_points, n_times)
+    dr_sun = -3.0 * dhi * sinphi * cosphi * F2_sun * sun_term
+    dr_moon = -3.0 * dhi * sinphi * cosphi * F2_moon * moon_term
+
+    # North corrections
+    dn_sun = -3.0 * dli * cos2phi * F2_sun * sun_term
+    dn_moon = -3.0 * dli * cos2phi * F2_moon * moon_term
+
+    # East corrections
+    sun_term_e = Sz * (Sx * cosla + Sy * sinla) / r_sun**2
+    moon_term_e = Lz * (Lx * cosla + Ly * sinla) / r_moon**2
+    de_sun = -3.0 * dli * sinphi * F2_sun * sun_term_e
+    de_moon = -3.0 * dli * sinphi * F2_moon * moon_term_e
+
+    # Total corrections in local coordinates
+    DR = dr_sun + dr_moon
+    DN = dn_sun + dn_moon
+    DE = de_sun + de_moon
+
+    # Convert to Cartesian (ECEF)
+    dx = DR * cosla * cosphi - DE * sinla - DN * cosla * sinphi
+    dy = DR * sinla * cosphi + DE * cosla - DN * sinla * sinphi
+    dz = DR * sinphi + DN * cosphi
+
+    return dx, dy, dz
+
+
+def _out_of_phase_semidiurnal(
+    xyz: np.ndarray,
+    sun_xyz: np.ndarray,
+    moon_xyz: np.ndarray,
+    F2_sun: np.ndarray,
+    F2_moon: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Out-of-phase corrections in the semi-diurnal band due to mantle anelasticity.
+
+    Following IERS Conventions 2010, Section 7.1.1.
+    """
+    # Love/Shida number corrections for semi-diurnal band
+    dhi = -0.0022
+    dli = -0.0007
+
+    xyz.shape[0]
+    sun_xyz.shape[0]
+
+    # Station geometry
+    radius = np.sqrt(np.sum(xyz**2, axis=1))
+    sinphi = xyz[:, 2] / radius
+    cosphi = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / radius
+    cosphi_safe = np.where(cosphi > 1e-10, cosphi, 1.0)
+    sinla = xyz[:, 1] / cosphi_safe / radius
+    cosla = xyz[:, 0] / cosphi_safe / radius
+    cos2la = cosla**2 - sinla**2
+    sin2la = 2.0 * cosla * sinla
+
+    # Expand for broadcasting
+    sinphi = sinphi[:, np.newaxis]
+    cosphi = cosphi[:, np.newaxis]
+    sinla = sinla[:, np.newaxis]
+    cosla = cosla[:, np.newaxis]
+    cos2la = cos2la[:, np.newaxis]
+    sin2la = sin2la[:, np.newaxis]
+
+    # Sun/Moon radii
+    r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
+    r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
+
+    Sx, Sy = sun_xyz[:, 0], sun_xyz[:, 1]
+    Lx, Ly = moon_xyz[:, 0], moon_xyz[:, 1]
+
+    # Common terms
+    sun_xy = ((Sx**2 - Sy**2) * sin2la - 2.0 * Sx * Sy * cos2la) / r_sun**2
+    moon_xy = ((Lx**2 - Ly**2) * sin2la - 2.0 * Lx * Ly * cos2la) / r_moon**2
+
+    # Radial corrections
+    dr_sun = -3.0/4.0 * dhi * cosphi**2 * F2_sun * sun_xy
+    dr_moon = -3.0/4.0 * dhi * cosphi**2 * F2_moon * moon_xy
+
+    # North corrections
+    dn_sun = 3.0/2.0 * dli * sinphi * cosphi * F2_sun * sun_xy
+    dn_moon = 3.0/2.0 * dli * sinphi * cosphi * F2_moon * moon_xy
+
+    # East corrections (different term)
+    sun_xy_e = ((Sx**2 - Sy**2) * cos2la + 2.0 * Sx * Sy * sin2la) / r_sun**2
+    moon_xy_e = ((Lx**2 - Ly**2) * cos2la + 2.0 * Lx * Ly * sin2la) / r_moon**2
+    de_sun = -3.0/2.0 * dli * cosphi * F2_sun * sun_xy_e
+    de_moon = -3.0/2.0 * dli * cosphi * F2_moon * moon_xy_e
+
+    # Total
+    DR = dr_sun + dr_moon
+    DN = dn_sun + dn_moon
+    DE = de_sun + de_moon
+
+    # Convert to ECEF
+    dx = DR * cosla * cosphi - DE * sinla - DN * cosla * sinphi
+    dy = DR * sinla * cosphi + DE * cosla - DN * sinla * sinphi
+    dz = DR * sinphi + DN * cosphi
+
+    return dx, dy, dz
+
+
+def _latitude_dependence(
+    xyz: np.ndarray,
+    sun_xyz: np.ndarray,
+    moon_xyz: np.ndarray,
+    F2_sun: np.ndarray,
+    F2_moon: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Corrections for latitude dependence given by L^1.
+
+    Following IERS Conventions 2010, Section 7.1.1.
+    """
+    # Love/Shida corrections
+    l1d = 0.0012   # diurnal
+    l1sd = 0.0024  # semi-diurnal
+
+    # Station geometry
+    radius = np.sqrt(np.sum(xyz**2, axis=1))
+    sinphi = xyz[:, 2] / radius
+    cosphi = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / radius
+    cosphi_safe = np.where(cosphi > 1e-10, cosphi, 1.0)
+    sinla = xyz[:, 1] / cosphi_safe / radius
+    cosla = xyz[:, 0] / cosphi_safe / radius
+    cos2la = cosla**2 - sinla**2
+    sin2la = 2.0 * cosla * sinla
+
+    # Expand for broadcasting
+    sinphi = sinphi[:, np.newaxis]
+    cosphi = cosphi[:, np.newaxis]
+    sinla = sinla[:, np.newaxis]
+    cosla = cosla[:, np.newaxis]
+    cos2la = cos2la[:, np.newaxis]
+    sin2la = sin2la[:, np.newaxis]
+
+    # Sun/Moon
+    r_sun = np.sqrt(np.sum(sun_xyz**2, axis=1))
+    r_moon = np.sqrt(np.sum(moon_xyz**2, axis=1))
+
+    Sx, Sy, Sz = sun_xyz[:, 0], sun_xyz[:, 1], sun_xyz[:, 2]
+    Lx, Ly, Lz = moon_xyz[:, 0], moon_xyz[:, 1], moon_xyz[:, 2]
+
+    # Diurnal band
+    dn_d_sun = -l1d * sinphi**2 * F2_sun * Sz * (Sx * cosla + Sy * sinla) / r_sun**2
+    dn_d_moon = -l1d * sinphi**2 * F2_moon * Lz * (Lx * cosla + Ly * sinla) / r_moon**2
+
+    de_d_sun = l1d * sinphi * (cosphi**2 - sinphi**2) * F2_sun * Sz * (Sx * sinla - Sy * cosla) / r_sun**2
+    de_d_moon = l1d * sinphi * (cosphi**2 - sinphi**2) * F2_moon * Lz * (Lx * sinla - Ly * cosla) / r_moon**2
+
+    # Semi-diurnal band
+    sun_xy = ((Sx**2 - Sy**2) * cos2la + 2.0 * Sx * Sy * sin2la) / r_sun**2
+    moon_xy = ((Lx**2 - Ly**2) * cos2la + 2.0 * Lx * Ly * sin2la) / r_moon**2
+
+    dn_s_sun = -l1sd / 2.0 * sinphi * cosphi * F2_sun * sun_xy
+    dn_s_moon = -l1sd / 2.0 * sinphi * cosphi * F2_moon * moon_xy
+
+    sun_xy_e = ((Sx**2 - Sy**2) * sin2la - 2.0 * Sx * Sy * cos2la) / r_sun**2
+    moon_xy_e = ((Lx**2 - Ly**2) * sin2la - 2.0 * Lx * Ly * cos2la) / r_moon**2
+
+    de_s_sun = -l1sd / 2.0 * sinphi**2 * cosphi * F2_sun * sun_xy_e
+    de_s_moon = -l1sd / 2.0 * sinphi**2 * cosphi * F2_moon * moon_xy_e
+
+    # Total (multiply by 3 as per IERS)
+    DN = 3.0 * (dn_d_sun + dn_d_moon + dn_s_sun + dn_s_moon)
+    DE = 3.0 * (de_d_sun + de_d_moon + de_s_sun + de_s_moon)
+
+    # Convert to ECEF (radial=0 for this correction)
+    dx = -DE * sinla - DN * cosla * sinphi
+    dy = DE * cosla - DN * sinla * sinphi
+    dz = DN * cosphi
+
+    return dx, dy, dz
+
+
+def _doodson_arguments(mjd: np.ndarray) -> tuple[np.ndarray, ...]:
+    """
+    Calculate Doodson arguments (fundamental astronomical arguments).
+
+    Parameters
+    ----------
+    mjd : np.ndarray
+        Modified Julian Day
+
+    Returns
+    -------
+    tau, s, h, p, zns, ps : np.ndarray
+        Doodson arguments in radians
+    """
+    # Julian centuries from J2000.0
+    T = (mjd - 51544.5) / 36525.0
+
+    # Mean longitude of Moon (radians)
+    s = np.radians(218.3165 + 481267.8813 * T)
+
+    # Mean longitude of Sun (radians)
+    h = np.radians(280.4661 + 36000.7698 * T)
+
+    # Mean longitude of lunar perigee (radians)
+    p = np.radians(83.3535 + 4069.0137 * T)
+
+    # Negative mean longitude of lunar ascending node (radians)
+    zns = np.radians(234.9555 - 1934.1363 * T)
+
+    # Mean longitude of solar perigee (radians)
+    ps = np.radians(282.9384 + 1.7195 * T)
+
+    # Greenwich mean sidereal time (in radians, mod 2π)
+    # GMST at 0h UT1 + Earth rotation angle
+    theta = np.radians(280.4606 + 360.9856473 * (mjd - 51544.5))
+
+    # τ = θ + π - s (mean lunar time)
+    tau = theta + np.pi - s
+
+    return tau, s, h, p, zns, ps
+
+
+def _frequency_dependence_diurnal(
+    xyz: np.ndarray,
+    mjd: np.ndarray,
+    deltat: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Frequency-dependent corrections in the diurnal band.
+
+    Following IERS Conventions 2010, Table 7.3a.
+    """
+    n_points = xyz.shape[0]
+    n_times = len(mjd)
+
+    # Reduced table 7.3a (only significant terms)
+    # Columns: s, h, p, np, ps, dR_ip, dR_op, dT_ip, dT_op (mm)
+    table = np.array([
+        [-2.0, 0.0, 1.0, 0.0, 0.0, -0.08, 0.0, -0.01, 0.01],
+        [-1.0, 0.0, 0.0, -1.0, 0.0, -0.10, 0.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0, 0.0, 0.0, -0.51, 0.0, -0.02, 0.03],
+        [1.0, -2.0, 0.0, 0.0, 0.0, -1.23, -0.07, 0.06, 0.01],
+        [1.0, 0.0, 0.0, -1.0, 0.0, -0.22, 0.01, 0.01, 0.0],
+        [1.0, 0.0, 0.0, 0.0, 0.0, 12.00, -0.80, -0.67, -0.03],
+        [1.0, 0.0, 0.0, 1.0, 0.0, 1.73, -0.12, -0.10, 0.0],
+        [1.0, 1.0, 0.0, 0.0, -1.0, -0.50, -0.01, 0.03, 0.0],
+        [1.0, 2.0, 0.0, 0.0, 0.0, -0.11, 0.01, 0.01, 0.0],
+    ])
+
+    # Station geometry
+    radius = np.sqrt(np.sum(xyz**2, axis=1))
+    sinphi = xyz[:, 2] / radius
+    cosphi = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / radius
+    cosphi_safe = np.where(cosphi > 1e-10, cosphi, 1.0)
+    sinla = xyz[:, 1] / cosphi_safe / radius
+    cosla = xyz[:, 0] / cosphi_safe / radius
+
+    # Longitude
+    zla = np.arctan2(xyz[:, 1], xyz[:, 0])
+
+    # Get Doodson arguments
+    tau, s, h, p, zns, ps = _doodson_arguments(mjd + deltat)
+
+    # Initialize output
+    dx = np.zeros((n_points, n_times))
+    dy = np.zeros((n_points, n_times))
+    dz = np.zeros((n_points, n_times))
+
+    for row in table:
+        coef_s, coef_h, coef_p, coef_np, coef_ps = row[:5]
+        dR_ip, dR_op, dT_ip, dT_op = row[5:9]
+
+        # Phase angle (Greenwich): (n_times,)
+        thetaf = tau + coef_s * s + coef_h * h + coef_p * p + coef_np * zns + coef_ps * ps
+
+        # Complex phase with longitude dependence: (n_points, n_times)
+        phase = thetaf[np.newaxis, :] + zla[:, np.newaxis]
+        cphase = np.exp(1j * phase)
+
+        # Local displacements (mm -> m)
+        dr = (sinphi[:, np.newaxis] * cosphi[:, np.newaxis] *
+              (dT_ip * cphase.imag + dR_ip * cphase.real)) * 1e-3
+        dn = ((cosphi[:, np.newaxis]**2 - sinphi[:, np.newaxis]**2) *
+              (dT_op * cphase.imag + dR_op * cphase.real)) * 1e-3
+        de = (cosphi[:, np.newaxis] *
+              (dT_ip * cphase.real - dR_ip * cphase.imag)) * 1e-3
+
+        # Convert to ECEF
+        dx += dr * cosla[:, np.newaxis] * cosphi[:, np.newaxis] - de * sinla[:, np.newaxis] - dn * cosla[:, np.newaxis] * sinphi[:, np.newaxis]
+        dy += dr * sinla[:, np.newaxis] * cosphi[:, np.newaxis] + de * cosla[:, np.newaxis] - dn * sinla[:, np.newaxis] * sinphi[:, np.newaxis]
+        dz += dr * sinphi[:, np.newaxis] + dn * cosphi[:, np.newaxis]
+
+    return dx, dy, dz
+
+
+def _frequency_dependence_long_period(
+    xyz: np.ndarray,
+    mjd: np.ndarray,
+    deltat: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Frequency-dependent corrections in the long-period band.
+
+    Following IERS Conventions 2010, Table 7.3b.
+    """
+    n_points = xyz.shape[0]
+    n_times = len(mjd)
+
+    # Reduced table 7.3b
+    # Columns: s, h, p, np, ps, dR_ip, dR_op, dT_ip, dT_op (mm)
+    table = np.array([
+        [0.0, 0.0, 0.0, 1.0, 0.0, 0.47, 0.23, 0.16, 0.07],
+        [0.0, 2.0, 0.0, 0.0, 0.0, -0.20, -0.12, -0.11, -0.05],
+        [1.0, 0.0, -1.0, 0.0, 0.0, -0.11, -0.08, -0.09, -0.04],
+        [2.0, 0.0, 0.0, 0.0, 0.0, -0.13, -0.11, -0.15, -0.07],
+        [2.0, 0.0, 0.0, 1.0, 0.0, -0.05, -0.05, -0.06, -0.03],
+    ])
+
+    # Station geometry
+    radius = np.sqrt(np.sum(xyz**2, axis=1))
+    sinphi = xyz[:, 2] / radius
+    cosphi = np.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2) / radius
+    cosphi_safe = np.where(cosphi > 1e-10, cosphi, 1.0)
+    sinla = xyz[:, 1] / cosphi_safe / radius
+    cosla = xyz[:, 0] / cosphi_safe / radius
+
+    # Get Doodson arguments (no tau for long-period)
+    _, s, h, p, zns, ps = _doodson_arguments(mjd + deltat)
+
+    # Initialize output
+    dx = np.zeros((n_points, n_times))
+    dy = np.zeros((n_points, n_times))
+    dz = np.zeros((n_points, n_times))
+
+    for row in table:
+        coef_s, coef_h, coef_p, coef_np, coef_ps = row[:5]
+        dR_ip, dR_op, dT_ip, dT_op = row[5:9]
+
+        # Phase angle (no longitude dependence for zonal harmonics): (n_times,)
+        thetaf = coef_s * s + coef_h * h + coef_p * p + coef_np * zns + coef_ps * ps
+        cphase = np.exp(1j * thetaf)
+
+        # Local displacements (mm -> m)
+        # Zonal: depends on latitude only
+        dr = ((1.5 * sinphi[:, np.newaxis]**2 - 0.5) *
+              (dT_ip * cphase.imag + dR_ip * cphase.real)) * 1e-3
+        dn = (2.0 * cosphi[:, np.newaxis] * sinphi[:, np.newaxis] *
+              (dT_op * cphase.imag + dR_op * cphase.real)) * 1e-3
+
+        # Convert to ECEF
+        dx += dr * cosla[:, np.newaxis] * cosphi[:, np.newaxis] - dn * cosla[:, np.newaxis] * sinphi[:, np.newaxis]
+        dy += dr * sinla[:, np.newaxis] * cosphi[:, np.newaxis] - dn * sinla[:, np.newaxis] * sinphi[:, np.newaxis]
+        dz += dr * sinphi[:, np.newaxis] + dn * cosphi[:, np.newaxis]
+
+    return dx, dy, dz

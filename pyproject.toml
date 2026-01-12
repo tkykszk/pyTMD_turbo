@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyTMD_turbo"
-version = "0.2.0"
+version = "0.2.1"
 description = "High-performance tidal prediction module - a derivative work of pyTMD"
 keywords = [
     "Ocean Tides",
@@ -80,7 +80,6 @@ show_missing = true
 precision = 2
 
 [tool.ruff]
-line-length = 80
 indent-width = 4
 exclude = [
     ".git",
@@ -104,6 +103,17 @@ select = [
     "I",
     # ruff-specific
     "RUF",
+]
+ignore = [
+    # Line too long - disabled for flexibility
+    "E501",
+    # Ambiguous unicode characters in docstrings (math symbols)
+    "RUF002",
+    "RUF003",
+    # Mutable class attributes (intentional for dataclass-like patterns)
+    "RUF012",
+    # SIM108: ternary not always clearer with comments
+    "SIM108",
 ]
 
 [tool.ruff.lint.pydocstyle]

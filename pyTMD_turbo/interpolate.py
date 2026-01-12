@@ -14,13 +14,11 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Tuple
-
 import numpy as np
 
 __all__ = [
-    'extrapolate',
     'bilinear',
+    'extrapolate',
 ]
 
 # Earth semi-major axis (km) for geographic distance calculations
@@ -31,7 +29,7 @@ def _to_cartesian_3d(
     lon: np.ndarray,
     lat: np.ndarray,
     radius: float = 1.0
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert geographic coordinates to 3D Cartesian on a sphere
 
@@ -68,7 +66,7 @@ def extrapolate(
     fill_value: float = np.nan,
     cutoff: float = np.inf,
     is_geographic: bool = True,
-    dtype: Optional[np.dtype] = None,
+    dtype: np.dtype | None = None,
 ) -> np.ndarray:
     """
     Nearest-neighbor extrapolation using k-d tree
@@ -125,8 +123,8 @@ def extrapolate(
     """
     try:
         from scipy.spatial import cKDTree
-    except ImportError:
-        raise ImportError("scipy is required for extrapolate function")
+    except ImportError as e:
+        raise ImportError("scipy is required for extrapolate function") from e
 
     # Ensure arrays
     xs = np.atleast_1d(np.asarray(xs, dtype=np.float64))
@@ -196,13 +194,10 @@ def extrapolate(
     output_mask = np.ones(len(X), dtype=bool)
 
     # Apply cutoff
-    if is_geographic:
-        # For 3D Cartesian, convert cutoff to chord distance
-        # Chord distance ≈ 2 * R * sin(d / 2R) where d is arc distance
-        # For small angles: chord ≈ arc, so cutoff_3d ≈ cutoff
-        cutoff_dist = cutoff
-    else:
-        cutoff_dist = cutoff
+    # For 3D Cartesian, convert cutoff to chord distance
+    # Chord distance ≈ 2 * R * sin(d / 2R) where d is arc distance
+    # For small angles: chord ≈ arc, so cutoff_3d ≈ cutoff
+    cutoff_dist = cutoff
 
     # Fill valid points
     valid_output = distances <= cutoff_dist
@@ -256,8 +251,8 @@ def bilinear(
     """
     try:
         from scipy.interpolate import RegularGridInterpolator
-    except ImportError:
-        raise ImportError("scipy is required for bilinear interpolation")
+    except ImportError as e:
+        raise ImportError("scipy is required for bilinear interpolation") from e
 
     xs = np.atleast_1d(np.asarray(xs, dtype=np.float64))
     ys = np.atleast_1d(np.asarray(ys, dtype=np.float64))

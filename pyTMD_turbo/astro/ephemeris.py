@@ -14,8 +14,8 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+
 import numpy as np
-from typing import Tuple
 
 # Constants
 _MJD_J2000 = 51544.5  # MJD of J2000.0
@@ -216,7 +216,7 @@ def rotate_x(angle_rad: float) -> np.ndarray:
     return rot
 
 
-def solar_ecef(mjd: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def solar_ecef(mjd: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute solar ECEF coordinates (same approximation as PyTMD)
 
@@ -308,7 +308,7 @@ def solar_distance(mjd: np.ndarray) -> np.ndarray:
 # Lunar position calculation
 # ============================================================
 
-def lunar_ecef(mjd: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def lunar_ecef(mjd: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute lunar ECEF coordinates (same approximation as PyTMD)
 
@@ -485,7 +485,7 @@ def normalize_angle(theta: np.ndarray, circle: float = 360.0) -> np.ndarray:
 def doodson_arguments(
     mjd: np.ndarray,
     deltat: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute the six Doodson astronomical arguments
 
@@ -565,7 +565,7 @@ def doodson_arguments(
 def delaunay_arguments(
     mjd: np.ndarray,
     deltat: float = 0.0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute the five Delaunay astronomical arguments
 
@@ -631,7 +631,7 @@ def delaunay_arguments(
 def schureman_arguments(
     P: np.ndarray,
     N: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
            np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute additional Schureman astronomical arguments for FES models

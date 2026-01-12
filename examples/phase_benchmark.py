@@ -7,16 +7,15 @@ Compares single constituent vs multi-constituent fitting.
 
 import sys
 import time
-import numpy as np
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Dict, List
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pyTMD_turbo.compute import tide_elevations, init_model
-
+from pyTMD_turbo.compute import init_model, tide_elevations
 
 # =============================================================================
 # Timing Utilities
@@ -26,7 +25,7 @@ from pyTMD_turbo.compute import tide_elevations, init_model
 class TimingRecord:
     """Record of computation times"""
     name: str
-    times: List[float] = field(default_factory=list)
+    times: list[float] = field(default_factory=list)
 
     def add(self, elapsed: float):
         self.times.append(elapsed)
@@ -62,7 +61,7 @@ class Timer:
 class BenchmarkResults:
     """Collection of timing records"""
     def __init__(self):
-        self.records: Dict[str, TimingRecord] = {}
+        self.records: dict[str, TimingRecord] = {}
 
     def get(self, name: str) -> TimingRecord:
         if name not in self.records:
@@ -164,7 +163,7 @@ def fit_single_constituent(t: np.ndarray, y: np.ndarray, omega: float) -> dict:
 
 
 def fit_multi_constituent(t: np.ndarray, y: np.ndarray,
-                          constituents: List[str]) -> Dict[str, dict]:
+                          constituents: list[str]) -> dict[str, dict]:
     """
     Fit multiple sinusoids simultaneously:
     y = sum_i A_i * sin(w_i * t + phi_i) + C
@@ -367,7 +366,7 @@ def main():
                 for const in CONSTITUENTS:
                     omega = get_omega(const)
                     phase = omega * t + result_multi[const]['phase']
-                    cos_phase = np.cos(phase)
+                    np.cos(phase)
 
     phase_time = bench.get("7. phase_at_points").total
     n_ops = 1000 * N_RANDOM_POINTS * len(CONSTITUENTS)

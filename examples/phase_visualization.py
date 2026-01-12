@@ -11,18 +11,17 @@ Location: 27.0744° N, 142.2178° E (near Ogasawara Islands)
 Period: 2026-01-01 to 2026-01-04
 """
 
+import json
 import sys
 import time
-import json
-import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pyTMD_turbo.compute import tide_elevations, SET_displacements, init_model
-
+from pyTMD_turbo.compute import SET_displacements, init_model, tide_elevations
 
 # =============================================================================
 # Configuration
@@ -93,7 +92,7 @@ def mjd_to_datetime(mjd: float) -> datetime:
 
 
 def fit_multi_constituent(t: np.ndarray, y: np.ndarray,
-                          constituents: List[str]) -> Dict[str, dict]:
+                          constituents: list[str]) -> dict[str, dict]:
     """
     Fit multiple sinusoids simultaneously:
     y = sum_i A_i * sin(w_i * t + phi_i) + C
@@ -123,7 +122,7 @@ def fit_multi_constituent(t: np.ndarray, y: np.ndarray,
 
 
 def compute_derivative_multi(t_sec: float, fit_result: dict,
-                              constituents: List[str]) -> tuple:
+                              constituents: list[str]) -> tuple:
     """
     Compute total derivative from all constituents
     Returns (total_derivative, constituent_details)
@@ -209,7 +208,7 @@ def main():
         timings[f'init_{model_name}'] = time.perf_counter() - t0
         print(f"  Init: {timings[f'init_{model_name}']*1000:.1f} ms")
 
-        print(f"  Computing tides...")
+        print("  Computing tides...")
         t0 = time.perf_counter()
         grid = tide_elevations(
             np.full(N_GRID_POINTS, LON),
@@ -254,7 +253,7 @@ def main():
             'color': model_cfg['color'],
         }
 
-        print(f"  Fitted constituents:")
+        print("  Fitted constituents:")
         for const in constituents:
             r = fit_result[const]
             print(f"    {const.upper()}: A={r['amplitude']*100:.2f} cm, φ={np.degrees(r['phase']):.1f}°")
@@ -273,7 +272,7 @@ def main():
     timings[f'init_{model_name}'] = time.perf_counter() - t0
     print(f"  Init: {timings[f'init_{model_name}']*1000:.1f} ms")
 
-    print(f"  Computing tides...")
+    print("  Computing tides...")
     t0 = time.perf_counter()
     lp_grid = tide_elevations(
         np.full(N_GRID_POINTS, LON),
@@ -354,7 +353,7 @@ def main():
             'constituents': details,
         })
 
-    print(f"  SET fitted constituents:")
+    print("  SET fitted constituents:")
     for const in SET_CONSTITUENTS:
         r = set_fit[const]
         print(f"    {const.upper()}: A={r['amplitude']*1000:.3f} mm, φ={np.degrees(r['phase']):.1f}°")
@@ -428,9 +427,48 @@ def generate_constituent_breakdown(points_data, constituents, unit, scale):
     return ''.join(html_parts)
 
 
+def find_phase_zero_crossings(fit_result: dict, constituents: list[str],
+                                t_max_seconds: float) -> dict[str, list[float]]:
+    """
+    Find times (in hours from start) where each constituent's phase crosses 0 (mod 2π).
+
+    Phase: φ(t) = ω*t + φ₀
+    Zero crossing when: ω*t + φ₀ = 2πn
+    Solving: t = (2πn - φ₀) / ω
+
+    Returns dict mapping constituent name to list of crossing times in hours.
+    """
+    crossings = {}
+    t_max_seconds / 3600
+
+    for const in constituents:
+        r = fit_result[const]
+        omega = r['omega']  # rad/s
+        phase0 = r['phase']  # initial phase offset
+
+        # Find all n such that t = (2πn - φ₀) / ω is in [0, t_max_seconds]
+        # t >= 0: 2πn - φ₀ >= 0 → n >= φ₀/(2π)
+        # t <= t_max: 2πn - φ₀ <= ω*t_max → n <= (ω*t_max + φ₀)/(2π)
+
+        n_min = int(np.ceil(phase0 / (2 * np.pi)))
+        n_max = int(np.floor((omega * t_max_seconds + phase0) / (2 * np.pi)))
+
+        const_crossings = []
+        for n in range(n_min, n_max + 1):
+            t_sec = (2 * np.pi * n - phase0) / omega
+            if 0 <= t_sec <= t_max_seconds:
+                t_hours = t_sec / 3600
+                const_crossings.append(t_hours)
+
+        crossings[const] = const_crossings
+
+    return crossings
+
+
 def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
                   set_grid, set_results, set_fit, mjd_start, timings):
     hours_grid = (mjd_grid - mjd_start) * 24
+    t_max_seconds = t_grid_seconds[-1]
 
     # Prepare short-period data for JSON
     sp_json_data = {}
@@ -479,6 +517,28 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
             'derivative_numerical': r['derivative_numerical'] * 3600 * 1000,
             'datetime': r['datetime'].strftime('%Y-%m-%d %H:%M'),
         })
+
+    # Calculate phase=0 crossings for vertical lines
+    # Use first short-period model's fit for ocean tide crossings
+    first_sp_model = next(iter(short_period_data.keys()))
+    first_sp_fit = short_period_data[first_sp_model]['fit']
+    first_sp_constituents = short_period_data[first_sp_model]['constituents']
+    sp_phase_crossings = find_phase_zero_crossings(first_sp_fit, first_sp_constituents, t_max_seconds)
+
+    # SET phase crossings
+    set_phase_crossings = find_phase_zero_crossings(set_fit, SET_CONSTITUENTS, t_max_seconds)
+
+    # Prepare crossing data for JSON - use dominant constituent (M2 for ocean/SET)
+    # For visibility, show M2 crossings as they're the dominant constituent
+    sp_m2_crossings = sp_phase_crossings.get('m2', [])
+    set_m2_crossings = set_phase_crossings.get('m2', [])
+
+    phase_crossings_json = {
+        'sp_m2': sp_m2_crossings,
+        'set_m2': set_m2_crossings,
+        'sp_all': sp_phase_crossings,
+        'set_all': set_phase_crossings,
+    }
 
     # Generate constituent tables for short-period models
     sp_constituent_tables = []
@@ -582,7 +642,7 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
 
     # Timing table
     timing_rows = []
-    for model_name in short_period_data.keys():
+    for model_name in short_period_data:
         timing_rows.append(f"<tr><td>{model_name} init</td><td>{timings.get(f'init_{model_name}', 0)*1000:.1f}</td></tr>")
         timing_rows.append(f"<tr><td>{model_name} compute</td><td>{timings.get(f'compute_{model_name}', 0)*1000:.1f}</td></tr>")
     timing_rows.append(f"<tr><td>RE14 init</td><td>{timings.get('init_RE14', 0)*1000:.1f}</td></tr>")
@@ -641,6 +701,15 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
         .lp-header {{ color: #9467bd; border-bottom: 2px solid #9467bd; }}
         .set-header {{ color: #ff7f0e; border-bottom: 2px solid #ff7f0e; }}
         details {{ margin: 5px 0; }}
+        .phase-toggle {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }}
+        .phase-btn {{
+            padding: 4px 12px; border-radius: 4px; cursor: pointer;
+            font-size: 0.85em; border: 2px solid; transition: all 0.2s;
+            font-weight: 500;
+        }}
+        .phase-btn.active {{ color: white; }}
+        .phase-btn:not(.active) {{ background: white; opacity: 0.6; }}
+        .phase-btn:hover {{ opacity: 1; }}
         summary {{ cursor: pointer; padding: 5px; background: #f0f0f0; border-radius: 4px; }}
     </style>
 </head>
@@ -680,6 +749,14 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
             <div class="legend-item"><span class="legend-color" style="background: #d62728;"></span>Tangent (Phase)</div>
             <div class="legend-item"><span class="legend-color" style="background: #17becf;"></span>Tangent (Numerical)</div>
         </div>
+        <div class="phase-toggle" id="sp-phase-toggle">
+            <strong style="margin-right: 5px; line-height: 28px;">Phase=0:</strong>
+            <button class="phase-btn active" data-const="m2" style="border-color: #e41a1c; background: #e41a1c;" onclick="toggleSpPhase('m2', this)">M2</button>
+            <button class="phase-btn active" data-const="s2" style="border-color: #377eb8; background: #377eb8;" onclick="toggleSpPhase('s2', this)">S2</button>
+            <button class="phase-btn active" data-const="k1" style="border-color: #4daf4a; background: #4daf4a;" onclick="toggleSpPhase('k1', this)">K1</button>
+            <button class="phase-btn active" data-const="o1" style="border-color: #984ea3; background: #984ea3;" onclick="toggleSpPhase('o1', this)">O1</button>
+            <button class="phase-btn active" data-const="n2" style="border-color: #ff7f00; background: #ff7f00;" onclick="toggleSpPhase('n2', this)">N2</button>
+        </div>
     </div>
 
     <div class="two-col">
@@ -699,6 +776,13 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
                 <div class="legend-item"><span class="legend-color" style="background: #ff7f0e;"></span>SET Up</div>
                 <div class="legend-item"><span class="legend-color" style="background: #d62728;"></span>Tangent (Phase)</div>
                 <div class="legend-item"><span class="legend-color" style="background: #17becf;"></span>Tangent (Numerical)</div>
+            </div>
+            <div class="phase-toggle" id="set-phase-toggle">
+                <strong style="margin-right: 5px; line-height: 28px;">Phase=0:</strong>
+                <button class="phase-btn active" data-const="m2" style="border-color: #e41a1c; background: #e41a1c;" onclick="toggleSetPhase('m2', this)">M2</button>
+                <button class="phase-btn active" data-const="s2" style="border-color: #377eb8; background: #377eb8;" onclick="toggleSetPhase('s2', this)">S2</button>
+                <button class="phase-btn active" data-const="k1" style="border-color: #4daf4a; background: #4daf4a;" onclick="toggleSetPhase('k1', this)">K1</button>
+                <button class="phase-btn active" data-const="o1" style="border-color: #984ea3; background: #984ea3;" onclick="toggleSetPhase('o1', this)">O1</button>
             </div>
         </div>
     </div>
@@ -763,6 +847,83 @@ def generate_html(mjd_grid, t_grid_seconds, short_period_data, long_period_data,
 const spData = {json.dumps(sp_json_data)};
 const lpData = {json.dumps(lp_json_data)};
 const setData = {json.dumps(set_json_data)};
+const phaseCrossings = {json.dumps(phase_crossings_json)};
+
+// Constituent colors for phase=0 lines
+const constituentColors = {{
+    'm2': '#e41a1c',
+    's2': '#377eb8',
+    'k1': '#4daf4a',
+    'o1': '#984ea3',
+    'n2': '#ff7f00'
+}};
+
+// Track which constituents are visible
+const spVisibleConstituents = {{ m2: true, s2: true, k1: true, o1: true, n2: true }};
+const setVisibleConstituents = {{ m2: true, s2: true, k1: true, o1: true }};
+
+// Store y-axis ranges
+let spYRange = {{ min: 0, max: 0 }};
+let setYRange = {{ min: 0, max: 0 }};
+
+// Create vertical line shapes for selected constituents
+function createPhaseZeroShapes(crossings, yMin, yMax, visibleConstituents) {{
+    const shapes = [];
+    Object.entries(crossings).forEach(([const_name, times]) => {{
+        if (!visibleConstituents[const_name]) return;
+        const color = constituentColors[const_name] || '#888888';
+        times.forEach(t => {{
+            shapes.push({{
+                type: 'line',
+                x0: t, x1: t,
+                y0: yMin, y1: yMax,
+                line: {{ color: color, width: 1.5, dash: 'dot' }},
+                opacity: 0.6
+            }});
+        }});
+    }});
+    return shapes;
+}}
+
+// Toggle short-period phase lines
+function toggleSpPhase(constituent, btn) {{
+    spVisibleConstituents[constituent] = !spVisibleConstituents[constituent];
+    btn.classList.toggle('active');
+    if (!spVisibleConstituents[constituent]) {{
+        btn.style.background = 'white';
+        btn.style.color = btn.style.borderColor;
+    }} else {{
+        btn.style.background = btn.style.borderColor;
+        btn.style.color = 'white';
+    }}
+    updateSpShapes();
+}}
+
+// Toggle SET phase lines
+function toggleSetPhase(constituent, btn) {{
+    setVisibleConstituents[constituent] = !setVisibleConstituents[constituent];
+    btn.classList.toggle('active');
+    if (!setVisibleConstituents[constituent]) {{
+        btn.style.background = 'white';
+        btn.style.color = btn.style.borderColor;
+    }} else {{
+        btn.style.background = btn.style.borderColor;
+        btn.style.color = 'white';
+    }}
+    updateSetShapes();
+}}
+
+// Update short-period chart shapes
+function updateSpShapes() {{
+    const shapes = createPhaseZeroShapes(phaseCrossings.sp_all, spYRange.min, spYRange.max, spVisibleConstituents);
+    Plotly.relayout('sp-chart', {{ shapes: shapes }});
+}}
+
+// Update SET chart shapes
+function updateSetShapes() {{
+    const shapes = createPhaseZeroShapes(phaseCrossings.set_all, setYRange.min, setYRange.max, setVisibleConstituents);
+    Plotly.relayout('set-chart', {{ shapes: shapes }});
+}}
 
 // Short-period Ocean Tide Chart
 function createSpChart() {{
@@ -810,12 +971,21 @@ function createSpChart() {{
         }});
     }});
 
+    // Calculate y-axis range for vertical lines
+    const allYValues = Object.values(spData).flatMap(d => d.curve.map(c => c[1]));
+    spYRange.min = Math.min(...allYValues) * 1.1;
+    spYRange.max = Math.max(...allYValues) * 1.1;
+
+    // Add phase=0 vertical lines (showing all constituents)
+    const shapes = createPhaseZeroShapes(phaseCrossings.sp_all, spYRange.min, spYRange.max, spVisibleConstituents);
+
     Plotly.newPlot('sp-chart', traces, {{
         xaxis: {{ title: 'Hours from 2026-01-01 00:00', gridcolor: '#eee' }},
         yaxis: {{ title: 'Ocean Tide (cm)', gridcolor: '#eee' }},
         hovermode: 'closest',
         legend: {{ x: 0, y: 1.1, orientation: 'h' }},
-        margin: {{ t: 40 }}
+        margin: {{ t: 40 }},
+        shapes: shapes
     }}, {{ responsive: true }});
 }}
 
@@ -903,12 +1073,21 @@ function createSetChart() {{
         }});
     }});
 
+    // Calculate y-axis range for vertical lines
+    const setYValues = setData.curve.map(c => c[1]);
+    setYRange.min = Math.min(...setYValues) * 1.1;
+    setYRange.max = Math.max(...setYValues) * 1.1;
+
+    // Add phase=0 vertical lines (showing all SET constituents)
+    const setShapes = createPhaseZeroShapes(phaseCrossings.set_all, setYRange.min, setYRange.max, setVisibleConstituents);
+
     Plotly.newPlot('set-chart', traces, {{
         xaxis: {{ title: 'Hours', gridcolor: '#eee' }},
         yaxis: {{ title: 'SET Up (mm)', gridcolor: '#eee' }},
         hovermode: 'closest',
         legend: {{ x: 0, y: 1.15, orientation: 'h' }},
-        margin: {{ t: 30 }}
+        margin: {{ t: 30 }},
+        shapes: setShapes
     }}, {{ responsive: true }});
 }}
 

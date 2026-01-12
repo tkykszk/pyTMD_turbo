@@ -15,49 +15,49 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+from .equilibrium import (
+    LPET_elevations,
+    equilibrium_tide,
+    legendre_polynomial,
+    mean_longitudes,
+)
 from .infer_minor import (
-    infer_minor,
-    infer_diurnal,
-    infer_semi_diurnal,
-    MINOR_CONSTITUENTS,
     DIURNAL_MINORS,
+    MINOR_CONSTITUENTS,
     SEMI_DIURNAL_MINORS,
+    infer_diurnal,
+    infer_minor,
+    infer_semi_diurnal,
 )
 from .solid_earth import (
-    solid_earth_tide,
     body_tide,
-    love_numbers,
     complex_love_numbers,
+    latitude_dependence,
+    love_numbers,
     out_of_phase_diurnal,
     out_of_phase_semidiurnal,
-    latitude_dependence,
-)
-from .equilibrium import (
-    equilibrium_tide,
-    LPET_elevations,
-    mean_longitudes,
-    legendre_polynomial,
+    solid_earth_tide,
 )
 
 __all__ = [
-    # Minor constituent inference
-    'infer_minor',
-    'infer_diurnal',
-    'infer_semi_diurnal',
-    'MINOR_CONSTITUENTS',
     'DIURNAL_MINORS',
+    'MINOR_CONSTITUENTS',
     'SEMI_DIURNAL_MINORS',
-    # Solid Earth tide
-    'solid_earth_tide',
+    'LPET_elevations',
     'body_tide',
-    'love_numbers',
     'complex_love_numbers',
-    'out_of_phase_diurnal',
-    'out_of_phase_semidiurnal',
-    'latitude_dependence',
     # Equilibrium tide
     'equilibrium_tide',
-    'LPET_elevations',
-    'mean_longitudes',
+    'infer_diurnal',
+    # Minor constituent inference
+    'infer_minor',
+    'infer_semi_diurnal',
+    'latitude_dependence',
     'legendre_polynomial',
+    'love_numbers',
+    'mean_longitudes',
+    'out_of_phase_diurnal',
+    'out_of_phase_semidiurnal',
+    # Solid Earth tide
+    'solid_earth_tide',
 ]

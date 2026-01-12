@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pyTMD vs pyTMD_turbo Benchmark Report</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px; background: #f5f5f5;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card {
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-top: 0; }
+        h2 { color: #555; margin-top: 0; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .info-item { background: #e7f3ff; padding: 15px; border-radius: 4px; }
+        .info-item strong { display: block; color: #007bff; font-size: 0.9em; margin-bottom: 5px; }
+        .chart { width: 100%; height: 400px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+        th { background: #007bff; color: white; }
+        td:first-child { text-align: left; font-weight: 500; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .speedup { color: #28a745; font-weight: bold; }
+        .method-legend {
+            display: flex; flex-wrap: wrap; gap: 15px;
+            margin: 15px 0; justify-content: center;
+        }
+        .method-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 12px; background: #f0f0f0; border-radius: 4px;
+        }
+        .method-color { width: 16px; height: 16px; border-radius: 3px; }
+        .summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px; margin: 20px 0;
+        }
+        .summary-card {
+            text-align: center; padding: 20px; border-radius: 8px;
+        }
+        .summary-card.pytmd { background: #ffe5e5; }
+        .summary-card.single { background: #e0f7f5; }
+        .summary-card.parallel { background: #e3f2fd; }
+        .summary-card.multiproc { background: #e8f5e9; }
+        .summary-value { font-size: 2em; font-weight: bold; }
+        .summary-label { font-size: 0.85em; color: #666; margin-top: 5px; }
+        .note { background: #fff3cd; padding: 15px; border-radius: 4px; border-left: 4px solid #ffc107; margin: 15px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h1>pyTMD vs pyTMD_turbo Benchmark Report</h1>
+        <div class="info-grid">
+            <div class="info-item">
+                <strong>Generated</strong>
+                2026-01-12T08:02:45.828597
+            </div>
+            <div class="info-item">
+                <strong>CPU Cores</strong>
+                8
+            </div>
+            <div class="info-item">
+                <strong>Model</strong>
+                GOT5.5
+            </div>
+            <div class="info-item">
+                <strong>Repeats</strong>
+                3 per test
+            </div>
+        </div>
+        <div class="note">
+            <strong>Important Notes:</strong>
+            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                <li><strong>With load:</strong> Includes model loading time (~2.5-3.5s overhead)</li>
+                <li><strong>Preloaded:</strong> Model/dataset pre-loaded, only computation time measured</li>
+                <li><strong>Fair comparison:</strong> Compare pyTMD (preloaded) vs turbo (preloaded) for pure computation speed</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="method-legend">
+        <div class="method-item">
+            <div class="method-color" style="background: #ff6b6b;"></div>
+            <span>pyTMD (with load)</span>
+        </div>
+        <div class="method-item">
+            <div class="method-color" style="background: #ff9999;"></div>
+            <span>pyTMD (preloaded)</span>
+        </div>
+        <div class="method-item">
+            <div class="method-color" style="background: #45b7d1;"></div>
+            <span>turbo (with load)</span>
+        </div>
+        <div class="method-item">
+            <div class="method-color" style="background: #4ecdc4;"></div>
+            <span>turbo (preloaded)</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Small (10pts x 24h)</h2>
+        <p>Total calculations: <strong>240</strong>
+           (10 points x 24 times)</p>
+
+        <div class="summary-grid">
+            <div class="summary-card pytmd">
+                <div class="summary-value">3731ms</div>
+                <div class="summary-label">pyTMD (with load)<br>(baseline)</div>
+            </div>
+            <div class="summary-card" style="background:#ffe5e5;">
+                <div class="summary-value">450ms</div>
+                <div class="summary-label">pyTMD (preloaded)<br><span class="speedup">8.3x</span></div>
+            </div>
+            <div class="summary-card parallel">
+                <div class="summary-value">1532ms</div>
+                <div class="summary-label">turbo (with load)<br><span class="speedup">2.4x</span></div>
+            </div>
+            <div class="summary-card single">
+                <div class="summary-value">5ms</div>
+                <div class="summary-label">turbo (preloaded)<br><span class="speedup">83.2x vs pyTMD(pre)</span></div>
+            </div>
+        </div>
+
+        <div id="chart-small" class="chart"></div>
+
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Mean (ms)</th>
+                <th>Std (ms)</th>
+                <th>Speedup</th>
+            </tr>
+            <tr>
+                <td>pyTMD (with load)</td>
+                <td>3730.97</td>
+                <td>249.50</td>
+                <td class="speedup">baseline</td>
+            </tr>
+            <tr>
+                <td>pyTMD (preloaded)</td>
+                <td>449.56</td>
+                <td>90.00</td>
+                <td class="speedup">8.3x</td>
+            </tr>
+            <tr>
+                <td>turbo (with load)</td>
+                <td>1532.11</td>
+                <td>102.83</td>
+                <td class="speedup">2.4x</td>
+            </tr>
+            <tr>
+                <td>turbo (preloaded)</td>
+                <td>5.40</td>
+                <td>0.10</td>
+                <td class="speedup">690.3x (83.2x vs pyTMD preloaded)</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Medium (100pts x 1week)</h2>
+        <p>Total calculations: <strong>16,800</strong>
+           (100 points x 168 times)</p>
+
+        <div class="summary-grid">
+            <div class="summary-card pytmd">
+                <div class="summary-value">3925ms</div>
+                <div class="summary-label">pyTMD (with load)<br>(baseline)</div>
+            </div>
+            <div class="summary-card" style="background:#ffe5e5;">
+                <div class="summary-value">471ms</div>
+                <div class="summary-label">pyTMD (preloaded)<br><span class="speedup">8.3x</span></div>
+            </div>
+            <div class="summary-card parallel">
+                <div class="summary-value">1478ms</div>
+                <div class="summary-label">turbo (with load)<br><span class="speedup">2.7x</span></div>
+            </div>
+            <div class="summary-card single">
+                <div class="summary-value">66ms</div>
+                <div class="summary-label">turbo (preloaded)<br><span class="speedup">7.2x vs pyTMD(pre)</span></div>
+            </div>
+        </div>
+
+        <div id="chart-medium" class="chart"></div>
+
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Mean (ms)</th>
+                <th>Std (ms)</th>
+                <th>Speedup</th>
+            </tr>
+            <tr>
+                <td>pyTMD (with load)</td>
+                <td>3925.15</td>
+                <td>444.47</td>
+                <td class="speedup">baseline</td>
+            </tr>
+            <tr>
+                <td>pyTMD (preloaded)</td>
+                <td>471.44</td>
+                <td>67.96</td>
+                <td class="speedup">8.3x</td>
+            </tr>
+            <tr>
+                <td>turbo (with load)</td>
+                <td>1477.55</td>
+                <td>57.79</td>
+                <td class="speedup">2.7x</td>
+            </tr>
+            <tr>
+                <td>turbo (preloaded)</td>
+                <td>65.90</td>
+                <td>1.02</td>
+                <td class="speedup">59.6x (7.2x vs pyTMD preloaded)</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Large (1000pts x 1month)</h2>
+        <p>Total calculations: <strong>720,000</strong>
+           (1000 points x 720 times)</p>
+
+        <div class="summary-grid">
+            <div class="summary-card pytmd">
+                <div class="summary-value">9634ms</div>
+                <div class="summary-label">pyTMD (with load)<br>(baseline)</div>
+            </div>
+            <div class="summary-card" style="background:#ffe5e5;">
+                <div class="summary-value">6057ms</div>
+                <div class="summary-label">pyTMD (preloaded)<br><span class="speedup">1.6x</span></div>
+            </div>
+            <div class="summary-card parallel">
+                <div class="summary-value">3187ms</div>
+                <div class="summary-label">turbo (with load)<br><span class="speedup">3.0x</span></div>
+            </div>
+            <div class="summary-card single">
+                <div class="summary-value">1297ms</div>
+                <div class="summary-label">turbo (preloaded)<br><span class="speedup">4.7x vs pyTMD(pre)</span></div>
+            </div>
+        </div>
+
+        <div id="chart-large" class="chart"></div>
+
+        <table>
+            <tr>
+                <th>Method</th>
+                <th>Mean (ms)</th>
+                <th>Std (ms)</th>
+                <th>Speedup</th>
+            </tr>
+            <tr>
+                <td>pyTMD (with load)</td>
+                <td>9634.15</td>
+                <td>2086.75</td>
+                <td class="speedup">baseline</td>
+            </tr>
+            <tr>
+                <td>pyTMD (preloaded)</td>
+                <td>6056.88</td>
+                <td>490.08</td>
+                <td class="speedup">1.6x</td>
+            </tr>
+            <tr>
+                <td>turbo (with load)</td>
+                <td>3187.34</td>
+                <td>134.23</td>
+                <td class="speedup">3.0x</td>
+            </tr>
+            <tr>
+                <td>turbo (preloaded)</td>
+                <td>1297.36</td>
+                <td>7.52</td>
+                <td class="speedup">7.4x (4.7x vs pyTMD preloaded)</td>
+            </tr>
+        </table>
+    </div>
+
+<script>
+
+Plotly.newPlot('chart-small', [{
+    x: ["pyTMD (with load)", "pyTMD (preloaded)", "turbo (with load)", "turbo (preloaded)"],
+    y: [3730.9733474006257, 449.564930362006, 1532.1120970572035, 5.404680656890075],
+    error_y: { type: 'data', array: [249.50208594387055, 89.99612095878832, 102.82923260114424, 0.09534899656890969], visible: true },
+    type: 'bar',
+    marker: { color: ["#ff6b6b", "#ff9999", "#45b7d1", "#4ecdc4"] },
+    text: ["3731ms", "450ms", "1532ms", "5ms"],
+    textposition: 'outside'
+}], {
+    title: 'Small - Execution Time (log scale)',
+    yaxis: { title: 'Time (ms)', type: 'log' },
+    showlegend: false,
+    margin: { t: 50, b: 100 }
+}, { responsive: true });
+
+Plotly.newPlot('chart-medium', [{
+    x: ["pyTMD (with load)", "pyTMD (preloaded)", "turbo (with load)", "turbo (preloaded)"],
+    y: [3925.1471529714763, 471.4402500540018, 1477.5468891020864, 65.90093035871784],
+    error_y: { type: 'data', array: [444.46990464287734, 67.95804000983145, 57.793750988376935, 1.0210203481947453], visible: true },
+    type: 'bar',
+    marker: { color: ["#ff6b6b", "#ff9999", "#45b7d1", "#4ecdc4"] },
+    text: ["3925ms", "471ms", "1478ms", "66ms"],
+    textposition: 'outside'
+}], {
+    title: 'Medium - Execution Time (log scale)',
+    yaxis: { title: 'Time (ms)', type: 'log' },
+    showlegend: false,
+    margin: { t: 50, b: 100 }
+}, { responsive: true });
+
+Plotly.newPlot('chart-large', [{
+    x: ["pyTMD (with load)", "pyTMD (preloaded)", "turbo (with load)", "turbo (preloaded)"],
+    y: [9634.150833279515, 6056.883652384083, 3187.340027652681, 1297.3619304442157],
+    error_y: { type: 'data', array: [2086.7510278498444, 490.0793759368569, 134.2301931432815, 7.523054698311083], visible: true },
+    type: 'bar',
+    marker: { color: ["#ff6b6b", "#ff9999", "#45b7d1", "#4ecdc4"] },
+    text: ["9634ms", "6057ms", "3187ms", "1297ms"],
+    textposition: 'outside'
+}], {
+    title: 'Large - Execution Time (log scale)',
+    yaxis: { title: 'Time (ms)', type: 'log' },
+    showlegend: false,
+    margin: { t: 50, b: 100 }
+}, { responsive: true });
+</script>
+</body>
+</html>

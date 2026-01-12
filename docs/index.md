@@ -19,7 +19,7 @@ graph TB
     end
 
     subgraph Core["Core Modules"]
-        CA[cache<br/>NPZ caching]
+        CA[cache<br/>Disk cache]
         CO[cache_optimized<br/>Batch prediction]
         IN[interpolate<br/>Spatial interpolation]
     end
@@ -51,6 +51,9 @@ graph TB
 
 - **compute** - High-speed tidal calculation API
   - `tide_elevations()` - Tide elevation calculation
+  - `tide_currents()` - Tide current calculation
+  - `SET_displacements()` - Solid Earth Tide displacement
+  - `LPET_elevations()` - Long-period equilibrium tide
   - `init_model()` - Model initialization
 
 - **cache** - Cache control system
@@ -116,6 +119,8 @@ All methods are single-threaded optimized to avoid parallel overhead.
 
 ### Examples
 
+- `examples/run_benchmark.py` - pyTMD vs pyTMD_turbo benchmark (HTML report)
+- `examples/set_comparison.py` - SET comparison visualization
 - `examples/phase_visualization.py` - Phase visualization
 - `examples/phase_benchmark.py` - Performance benchmark
 - `examples/numba_benchmark.py` - Numba comparison
@@ -137,7 +142,7 @@ graph TB
     end
 
     subgraph Core["コアモジュール"]
-        CA[cache<br/>NPZキャッシュ]
+        CA[cache<br/>ディスクキャッシュ]
         CO[cache_optimized<br/>バッチ予測]
         IN[interpolate<br/>空間補間]
     end
@@ -169,6 +174,9 @@ graph TB
 
 - **compute** - 潮汐計算の高速化API
   - `tide_elevations()` - 潮位計算
+  - `tide_currents()` - 潮流計算
+  - `SET_displacements()` - 固体地球潮汐変位
+  - `LPET_elevations()` - 長周期平衡潮汐
   - `init_model()` - モデル初期化
 
 - **cache** - キャッシュ制御システム
@@ -234,6 +242,8 @@ derivatives = fitter.derivative(t_eval)
 
 ### サンプル
 
+- `examples/run_benchmark.py` - pyTMD vs pyTMD_turbo ベンチマーク（HTMLレポート）
+- `examples/set_comparison.py` - SET比較可視化
 - `examples/phase_visualization.py` - 位相可視化
 - `examples/phase_benchmark.py` - パフォーマンス計測
 - `examples/numba_benchmark.py` - Numba比較

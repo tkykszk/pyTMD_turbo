@@ -21,14 +21,15 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
-import numpy as np
-from typing import Any, Optional, Union, List, TYPE_CHECKING
+import contextlib
+from typing import TYPE_CHECKING
 
+import numpy as np
 from scipy import ndimage
 
 if TYPE_CHECKING:
-    import xarray as xr
     import pyproj as pyproj_types
+    import xarray as xr
     CRSType = pyproj_types.CRS
 else:
     CRSType = object
@@ -84,7 +85,7 @@ class TMDAccessor:
         self._constituents = None
 
     @property
-    def constituents(self) -> List[str]:
+    def constituents(self) -> list[str]:
         """
         List of tidal constituents in the dataset
 
@@ -114,7 +115,7 @@ class TMDAccessor:
         return self._constituents
 
     @property
-    def crs(self) -> Optional[CRSType]:
+    def crs(self) -> CRSType | None:
         """
         Coordinate reference system of the dataset
 
@@ -135,15 +136,11 @@ class TMDAccessor:
         # Check for crs attribute
         if 'crs' in ds.attrs:
             crs_str = ds.attrs['crs']
-            try:
+            with contextlib.suppress(Exception):
                 self._crs = pyproj.CRS(crs_str)
-            except Exception:
-                pass
         elif 'projection' in ds.attrs:
-            try:
+            with contextlib.suppress(Exception):
                 self._crs = pyproj.CRS(ds.attrs['projection'])
-            except Exception:
-                pass
 
         # Default to WGS84 geographic
         if self._crs is None:
@@ -172,7 +169,7 @@ class TMDAccessor:
         self,
         x: np.ndarray,
         y: np.ndarray,
-        crs: Optional[Union[str, CRSType]] = None,
+        crs: str | CRSType | None = None,
     ) -> tuple:
         """
         Transform coordinates to the dataset's CRS
@@ -221,7 +218,7 @@ class TMDAccessor:
 
     def coords_as(
         self,
-        crs: Optional[Union[str, CRSType]] = None,
+        crs: str | CRSType | None = None,
     ) -> tuple:
         """
         Get dataset coordinates in specified CRS
@@ -245,10 +242,7 @@ class TMDAccessor:
             return x, y
 
         # Target CRS
-        if isinstance(crs, str):
-            target_crs = pyproj.CRS(crs)
-        else:
-            target_crs = crs
+        target_crs = pyproj.CRS(crs) if isinstance(crs, str) else crs
 
         # Source CRS (dataset CRS)
         source_crs = self.crs
@@ -271,7 +265,7 @@ class TMDAccessor:
         y: np.ndarray,
         method: str = 'bilinear',
         extrapolate: bool = False,
-    ) -> 'xr.Dataset':
+    ) -> xr.Dataset:
         """
         Interpolate model to specified coordinates
 
@@ -332,7 +326,7 @@ class TMDAccessor:
                 if 'hc' in ds.data_vars:
                     data = ds['hc'].sel(constituent=const_name).values
                 else:
-                    var_name = list(ds.data_vars)[0]
+                    var_name = next(iter(ds.data_vars))
                     data = ds[var_name].sel(constituent=const_name).values
             else:
                 data = ds[const_name].values
@@ -352,7 +346,7 @@ class TMDAccessor:
                 )
 
         # Create output dataset
-        n_points = len(x)
+        len(x)
         data_vars = {
             name: (['point'], values)
             for name, values in interp_data.items()
@@ -371,8 +365,8 @@ class TMDAccessor:
     def predict(
         self,
         t: np.ndarray,
-        x: Optional[np.ndarray] = None,
-        y: Optional[np.ndarray] = None,
+        x: np.ndarray | None = None,
+        y: np.ndarray | None = None,
         corrections: str = 'GOT',
         method: str = 'bilinear',
     ) -> np.ndarray:
@@ -478,7 +472,7 @@ class TMDAccessor:
         t: np.ndarray,
         method: str = 'linear',
         corrections: str = 'GOT',
-        deltat: Optional[np.ndarray] = None,
+        deltat: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Infer minor tidal constituents
@@ -582,7 +576,5 @@ def register_accessor():
 
 # Auto-register if xarray is available
 if HAS_XARRAY:
-    try:
+    with contextlib.suppress(Exception):
         register_accessor()
-    except Exception:
-        pass

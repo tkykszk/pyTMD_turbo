@@ -8,8 +8,9 @@ Provides fast phase and derivative computation using:
 No parallel/multi-thread overhead - all methods are single-threaded optimized.
 """
 
+from typing import Optional
+
 import numpy as np
-from typing import Dict, List, Optional, Tuple
 
 # =============================================================================
 # Constituent Data
@@ -34,7 +35,7 @@ CONSTITUENT_PERIODS = {
 }
 
 # Pre-computed angular frequencies (rad/s)
-_OMEGA_CACHE: Dict[str, float] = {}
+_OMEGA_CACHE: dict[str, float] = {}
 
 
 def get_omega(constituent: str) -> float:
@@ -62,7 +63,7 @@ def get_omega(constituent: str) -> float:
     return _OMEGA_CACHE[key]
 
 
-def get_omegas(constituents: List[str]) -> np.ndarray:
+def get_omegas(constituents: list[str]) -> np.ndarray:
     """Get array of angular frequencies for multiple constituents."""
     return np.array([get_omega(c) for c in constituents])
 
@@ -119,7 +120,7 @@ class PhaseFitter:
     Numba cannot improve it).
     """
 
-    def __init__(self, constituents: Optional[List[str]] = None):
+    def __init__(self, constituents: Optional[list[str]] = None):
         """
         Initialize fitter with constituent list.
 
@@ -253,7 +254,7 @@ class PhaseFitter:
         phases_at_t = np.outer(t, self.omegas) + self.phases
         return np.sum(self.amplitudes * np.sin(phases_at_t), axis=1) + self.offset
 
-    def get_constituent_info(self) -> Dict[str, dict]:
+    def get_constituent_info(self) -> dict[str, dict]:
         """
         Get fitted parameters for each constituent.
 
@@ -283,7 +284,7 @@ class PhaseFitter:
 # =============================================================================
 
 def fit_phase(t: np.ndarray, y: np.ndarray,
-              constituents: Optional[List[str]] = None) -> PhaseFitter:
+              constituents: Optional[list[str]] = None) -> PhaseFitter:
     """
     Fit multi-constituent phase model to tide data.
 

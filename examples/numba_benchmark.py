@@ -14,14 +14,15 @@ Focus on the bottleneck operations:
 
 import sys
 import time
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Check if numba is available
 try:
-    import numba
+    import numba  # noqa: F401
     from numba import jit, prange
     NUMBA_AVAILABLE = True
 except ImportError:
@@ -263,7 +264,7 @@ def main():
     y = np.random.randn(N_POINTS)  # Dummy tide data
     t_eval = np.random.uniform(0, 3 * 86400, N_EVAL)  # Random evaluation points
 
-    print(f"\nTest configuration:")
+    print("\nTest configuration:")
     print(f"  Grid points: {N_POINTS}")
     print(f"  Eval points: {N_EVAL}")
     print(f"  Constituents: {N_CONSTITUENTS}")
@@ -290,7 +291,7 @@ def main():
     _, numba_par_time = benchmark(build_design_matrix_numba_parallel, (t, OMEGAS),
                                    n_iter=N_ITER, name="Numba Parallel")
 
-    print(f"\n  Speedup vs NumPy:")
+    print("\n  Speedup vs NumPy:")
     print(f"    Numba JIT:      {numpy_time/numba_time:.2f}x faster")
     print(f"    Numba Parallel: {numpy_time/numba_par_time:.2f}x faster")
 
@@ -325,7 +326,7 @@ def main():
     _, numba_fast_time = benchmark(derivative_numba_fastmath, (t_small, coeffs, OMEGAS),
                                     n_iter=N_ITER, name="Numba fastmath")
 
-    print(f"\n  Speedup vs NumPy (loop):")
+    print("\n  Speedup vs NumPy (loop):")
     print(f"    NumPy vectorized: {numpy_time/numpy_vec_time:.2f}x")
     print(f"    Numba JIT:        {numpy_time/numba_time:.2f}x")
     print(f"    Numba Parallel:   {numpy_time/numba_par_time:.2f}x")
@@ -353,7 +354,7 @@ def main():
     _, numba_fast_time = benchmark(derivative_numba_fastmath, (t_eval, coeffs, OMEGAS),
                                     n_iter=100, name="Numba fastmath")
 
-    print(f"\n  Speedup vs NumPy (loop):")
+    print("\n  Speedup vs NumPy (loop):")
     print(f"    NumPy vectorized: {numpy_time/numpy_vec_time:.2f}x")
     print(f"    Numba JIT:        {numpy_time/numba_time:.2f}x")
     print(f"    Numba Parallel:   {numpy_time/numba_par_time:.2f}x")
@@ -383,12 +384,12 @@ def main():
     _, numba_par_time = benchmark(fit_numba_parallel, (t, y, OMEGAS),
                                    n_iter=N_ITER, name="Numba Parallel (matrix) + NumPy lstsq")
 
-    print(f"\n  Speedup vs pure NumPy:")
+    print("\n  Speedup vs pure NumPy:")
     print(f"    Numba JIT (matrix):      {numpy_time/numba_time:.2f}x")
     print(f"    Numba Parallel (matrix): {numpy_time/numba_par_time:.2f}x")
 
-    print(f"\n  Note: np.linalg.lstsq uses LAPACK and is already highly optimized.")
-    print(f"        Numba cannot accelerate it further.")
+    print("\n  Note: np.linalg.lstsq uses LAPACK and is already highly optimized.")
+    print("        Numba cannot accelerate it further.")
 
     # =========================================================================
     # Summary

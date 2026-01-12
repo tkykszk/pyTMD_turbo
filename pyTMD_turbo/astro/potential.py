@@ -14,8 +14,8 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+
 import numpy as np
-from typing import Tuple
 
 # Constants
 _A_AXIS = 6378136.3  # Earth's semi-major axis (metres)
@@ -33,7 +33,7 @@ _MASS_RATIO_LUNAR = 0.0123000371  # Moon/Earth
 
 
 def geodetic_to_ecef(lat: np.ndarray, lon: np.ndarray, h: np.ndarray = None,
-                     a: float = 6378137.0, f: float = 1/298.257223563) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                     a: float = 6378137.0, f: float = 1/298.257223563) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert geodetic coordinates to ECEF coordinates
 
@@ -89,7 +89,7 @@ def solid_earth_tide(
     h3: float = _H3,
     l3: float = _L3,
     tide_system: str = "tide_free",
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute solid Earth tide (IERS Conventions 2010)
 

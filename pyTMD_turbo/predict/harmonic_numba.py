@@ -16,11 +16,11 @@ This software is licensed under the MIT License.
 See LICENSE file for details.
 """
 
+
 import numpy as np
-from typing import Tuple, Optional
 
 try:
-    from numba import jit, prange, float64
+    from numba import float64, jit, prange
     HAS_NUMBA = True
 except ImportError:
     HAS_NUMBA = False
@@ -193,7 +193,7 @@ def bilinear_interpolate_batch(grid_data: np.ndarray,
 
 
 @jit(nopython=True, fastmath=True)
-def compute_nodal_m2(mjd: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def compute_nodal_m2(mjd: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute nodal corrections for M2 constituent (simplified version)
 

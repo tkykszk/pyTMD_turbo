@@ -32,114 +32,111 @@ Usage:
     )
 """
 
-from . import compute
-from . import spatial
-from . import predict
-from . import interpolate
-from .compute import (
-    tide_elevations,
-    tide_currents,
-    predict_batch,
-    predict_single,
-    init_model,
-    datetime_to_mjd,
-    SET_displacements,
-    LPET_elevations,
-    tide_masks,
-)
-from .spatial import (
-    to_cartesian,
-    to_geodetic,
-    to_sphere,
-    scale_factors,
-    datum,
-)
-from .predict import (
-    infer_minor,
-    infer_diurnal,
-    infer_semi_diurnal,
-    solid_earth_tide,
-    body_tide,
-    equilibrium_tide,
-)
-from .interpolate import (
-    extrapolate,
-    bilinear,
-)
+from . import compute, interpolate, predict, spatial
 from .cache import (
-    # Enable/disable
-    enable_cache,
-    disable_cache,
-    enable_cache_for,
-    disable_cache_for,
-    is_cache_enabled,
-    is_cache_enabled_for,
-    # Temp cache
-    enable_temp_cache,
-    disable_temp_cache,
     # Context managers
     cache_disabled,
     cache_disabled_for,
+    clear_all_cache,
+    clear_cache,
+    disable_cache,
+    disable_cache_for,
+    disable_temp_cache,
+    # Enable/disable
+    enable_cache,
+    enable_cache_for,
+    # Temp cache
+    enable_temp_cache,
+    get_cache_info,
+    is_cache_enabled,
+    is_cache_enabled_for,
+    rebuild_all_cache,
     # Cache operations
     rebuild_cache,
-    rebuild_all_cache,
-    clear_cache,
-    clear_all_cache,
     # Status
     show_cache_status,
-    get_cache_info,
+)
+from .compute import (
+    LPET_elevations,
+    SET_displacements,
+    datetime_to_mjd,
+    init_model,
+    predict_batch,
+    predict_single,
+    tide_currents,
+    tide_elevations,
+    tide_masks,
+)
+from .interpolate import (
+    bilinear,
+    extrapolate,
+)
+from .predict import (
+    body_tide,
+    equilibrium_tide,
+    infer_diurnal,
+    infer_minor,
+    infer_semi_diurnal,
+    solid_earth_tide,
+)
+from .spatial import (
+    datum,
+    scale_factors,
+    to_cartesian,
+    to_geodetic,
+    to_sphere,
 )
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __all__ = [
-    'compute',
-    'spatial',
-    'predict',
-    'interpolate',
-    # Ocean tide
-    'tide_elevations',
-    'tide_currents',
-    'predict_batch',
-    'predict_single',
-    'init_model',
-    'datetime_to_mjd',
-    # Solid Earth tide
-    'SET_displacements',
-    'solid_earth_tide',
-    'body_tide',
     # Equilibrium tide
     'LPET_elevations',
+    # Solid Earth tide
+    'SET_displacements',
+    'bilinear',
+    'body_tide',
+    'cache_disabled',
+    'cache_disabled_for',
+    'clear_all_cache',
+    'clear_cache',
+    'compute',
+    'datetime_to_mjd',
+    'datum',
+    'disable_cache',
+    'disable_cache_for',
+    'disable_temp_cache',
+    # Cache control
+    'enable_cache',
+    'enable_cache_for',
+    'enable_temp_cache',
     'equilibrium_tide',
+    # Interpolation
+    'extrapolate',
+    'get_cache_info',
+    'infer_diurnal',
+    # Prediction
+    'infer_minor',
+    'infer_semi_diurnal',
+    'init_model',
+    'interpolate',
+    'is_cache_enabled',
+    'is_cache_enabled_for',
+    'predict',
+    'predict_batch',
+    'predict_single',
+    'rebuild_all_cache',
+    'rebuild_cache',
+    'scale_factors',
+    'show_cache_status',
+    'solid_earth_tide',
+    'spatial',
+    'tide_currents',
+    # Ocean tide
+    'tide_elevations',
     # Masks
     'tide_masks',
     # Spatial
     'to_cartesian',
     'to_geodetic',
     'to_sphere',
-    'scale_factors',
-    'datum',
-    # Prediction
-    'infer_minor',
-    'infer_diurnal',
-    'infer_semi_diurnal',
-    # Interpolation
-    'extrapolate',
-    'bilinear',
-    # Cache control
-    'enable_cache',
-    'disable_cache',
-    'enable_cache_for',
-    'disable_cache_for',
-    'is_cache_enabled',
-    'is_cache_enabled_for',
-    'enable_temp_cache',
-    'disable_temp_cache',
-    'cache_disabled',
-    'cache_disabled_for',
-    'rebuild_cache',
-    'rebuild_all_cache',
-    'clear_cache',
-    'clear_all_cache',
-    'show_cache_status',
-    'get_cache_info',
 ]

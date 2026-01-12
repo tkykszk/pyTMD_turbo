@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pathlib
 import warnings
-from typing import TYPE_CHECKING, Tuple, List, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -26,21 +26,21 @@ if TYPE_CHECKING:
     import xarray as xr
 
 __all__ = [
-    'read_raw_binary',
-    'read_grid',
-    'read_elevation',
-    'read_transport',
     'open_dataset',
-    'open_otis_grid',
-    'open_otis_elevation',
-    'open_otis_transport',
     'open_mfdataset',
+    'open_otis_elevation',
+    'open_otis_grid',
+    'open_otis_transport',
+    'read_elevation',
+    'read_grid',
+    'read_raw_binary',
+    'read_transport',
 ]
 
 
 def read_raw_binary(
-    path: Union[str, pathlib.Path],
-    dtype: Union[np.dtype, str],
+    path: str | pathlib.Path,
+    dtype: np.dtype | str,
     shape: tuple,
     offset: int = 0,
     order: str = "C",
@@ -95,9 +95,9 @@ def read_raw_binary(
 
 
 def read_grid(
-    input_file: Union[str, pathlib.Path],
+    input_file: str | pathlib.Path,
     use_mmap: bool = False,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Read OTIS model grid file
 
@@ -231,10 +231,10 @@ def read_grid(
 
 
 def read_elevation(
-    input_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    input_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     use_mmap: bool = False,
-) -> Tuple[np.ndarray, List[str]]:
+) -> tuple[np.ndarray, list[str]]:
     """
     Read OTIS model elevation file
 
@@ -313,9 +313,9 @@ def read_elevation(
 
 
 def read_transport(
-    input_file: Union[str, pathlib.Path],
+    input_file: str | pathlib.Path,
     use_mmap: bool = False,
-) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
     """
     Read OTIS model transport file
 
@@ -406,9 +406,9 @@ def read_transport(
 
 
 def open_otis_grid(
-    grid_file: Union[str, pathlib.Path],
+    grid_file: str | pathlib.Path,
     use_mmap: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read OTIS grid file and return as xarray Dataset
 
@@ -455,11 +455,11 @@ def open_otis_grid(
 
 
 def open_otis_elevation(
-    elevation_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    elevation_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     use_mmap: bool = False,
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read OTIS elevation file and return as xarray Dataset
 
@@ -524,12 +524,12 @@ def open_otis_elevation(
 
 
 def open_otis_transport(
-    transport_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    transport_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     use_mmap: bool = False,
     apply_mask: bool = True,
     convert_to_velocity: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read OTIS transport file and return as xarray Dataset
 
@@ -619,13 +619,13 @@ def open_otis_transport(
 
 
 def open_dataset(
-    model_file: Union[str, pathlib.Path],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    model_file: str | pathlib.Path,
+    grid_file: str | pathlib.Path | None = None,
     group: str = 'z',
     use_mmap: bool = False,
     apply_mask: bool = True,
     convert_to_velocity: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Open OTIS tidal model as xarray Dataset
 
@@ -714,13 +714,13 @@ def open_dataset(
 
 
 def open_mfdataset(
-    model_files: List[Union[str, pathlib.Path]],
-    grid_file: Optional[Union[str, pathlib.Path]] = None,
+    model_files: list[str | pathlib.Path],
+    grid_file: str | pathlib.Path | None = None,
     group: str = 'z',
     use_mmap: bool = False,
     apply_mask: bool = True,
     parallel: bool = False,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Open multiple OTIS files and merge into single Dataset
 

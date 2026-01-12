@@ -6,9 +6,10 @@ Benchmark comparison: pyTMD vs pyTMD_turbo
 - pyTMD_turbo (with cache, second run)
 """
 
-import numpy as np
 import time
 from datetime import datetime
+
+import numpy as np
 
 # Model directory
 MODEL_DIR = "/Users/taka/Documents/python/eq/LargeFiles"
@@ -75,14 +76,14 @@ def benchmark_pytmd_grid(lons, lats, times):
     import pyTMD.compute
 
     n_points = len(lons)
-    n_times = len(times)
+    len(times)
 
     start = time.perf_counter()
 
     # For grid computation, we need to compute for each point at each time
     # pyTMD doesn't natively support batch point x time, so we loop
     results = []
-    for i, t in enumerate(times):
+    for _i, t in enumerate(times):
         # Compute for all points at this single time
         tide = pyTMD.compute.tide_elevations(
             lons, lats, np.full(n_points, t),
@@ -183,7 +184,7 @@ def main():
         row = {"n_points": n_points}
 
         # 1. pyTMD (loop over times)
-        print(f"\n[1/3] Running pyTMD...")
+        print("\n[1/3] Running pyTMD...")
         try:
             t_pytmd, _ = benchmark_pytmd_grid(lons, lats, times)
             row["pytmd"] = t_pytmd
@@ -193,7 +194,7 @@ def main():
             row["pytmd"] = None
 
         # 2. pyTMD_turbo (no cache)
-        print(f"\n[2/3] Running pyTMD_turbo (no cache, first run)...")
+        print("\n[2/3] Running pyTMD_turbo (no cache, first run)...")
         try:
             t_turbo_nocache, tide_turbo = benchmark_pytmd_turbo_no_cache(lons, lats, times)
             row["turbo_no_cache"] = t_turbo_nocache
@@ -203,7 +204,7 @@ def main():
             row["turbo_no_cache"] = None
 
         # 3. pyTMD_turbo (with cache)
-        print(f"\n[3/3] Running pyTMD_turbo (with cache, second run)...")
+        print("\n[3/3] Running pyTMD_turbo (with cache, second run)...")
         try:
             t_turbo_cache, tide_turbo_cache = benchmark_pytmd_turbo_with_cache(lons, lats, times)
             row["turbo_with_cache"] = t_turbo_cache
@@ -233,10 +234,7 @@ def main():
         t2_str = f"{t2:.4f}s" if t2 else "N/A"
         t3_str = f"{t3:.4f}s" if t3 else "N/A"
 
-        if t1 and t3:
-            speedup = f"{t1/t3:.1f}x"
-        else:
-            speedup = "N/A"
+        speedup = f"{t1 / t3:.1f}x" if t1 and t3 else "N/A"
 
         print(f"{n:<10} {t1_str:<15} {t2_str:<18} {t3_str:<15} {speedup:<10}")
 

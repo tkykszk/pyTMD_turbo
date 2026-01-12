@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tidal Phase Visualization (Multi-Model + SET)</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px; background: #f5f5f5;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .card {
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-top: 0; }
+        h2 { color: #555; margin-top: 0; }
+        h3 { color: #666; margin-top: 0; }
+        h4 { color: #888; margin: 10px 0 5px 0; font-size: 0.9em; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .info-item { background: #e7f3ff; padding: 10px; border-radius: 4px; }
+        .info-item.lp { background: #f3e5f5; }
+        .info-item.set { background: #fff3e0; }
+        .info-item strong { display: block; color: #007bff; font-size: 0.9em; }
+        .info-item.lp strong { color: #7b1fa2; }
+        .info-item.set strong { color: #e65100; }
+        .chart { width: 100%; height: 400px; }
+        .chart-small { width: 100%; height: 300px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: right; }
+        th { background: #007bff; color: white; }
+        th.lp { background: #7b1fa2; }
+        th.set { background: #e65100; }
+        td:first-child { text-align: left; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .timing { background: #fff3cd; padding: 15px; border-radius: 4px; border-left: 4px solid #ffc107; }
+        .legend { display: flex; flex-wrap: wrap; gap: 15px; margin: 15px 0; font-size: 0.9em; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 20px; height: 3px; }
+        .constituent-table { margin-top: 10px; }
+        .good { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 20px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+        .ocean-header { color: #1f77b4; border-bottom: 2px solid #1f77b4; }
+        .lp-header { color: #9467bd; border-bottom: 2px solid #9467bd; }
+        .set-header { color: #ff7f0e; border-bottom: 2px solid #ff7f0e; }
+        details { margin: 5px 0; }
+        .phase-toggle { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .phase-btn {
+            padding: 4px 12px; border-radius: 4px; cursor: pointer;
+            font-size: 0.85em; border: 2px solid; transition: all 0.2s;
+            font-weight: 500;
+        }
+        .phase-btn.active { color: white; }
+        .phase-btn:not(.active) { background: white; opacity: 0.6; }
+        .phase-btn:hover { opacity: 1; }
+        summary { cursor: pointer; padding: 5px; background: #f0f0f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h1>Tidal Phase Visualization (GOT5.5 + GOT5.6 + RE14 + SET)</h1>
+        <div class="info-grid">
+            <div class="info-item">
+                <strong>Location</strong>
+                27.0744°N, 142.2178°E
+            </div>
+            <div class="info-item">
+                <strong>Period</strong>
+                2026-01-01 ~ 2026-01-04 (72h)
+            </div>
+            <div class="info-item">
+                <strong>Short-period</strong>
+                GOT5.5, GOT5.6
+            </div>
+            <div class="info-item lp">
+                <strong>Long-period</strong>
+                RE14 (Mf, Mm)
+            </div>
+            <div class="info-item set">
+                <strong>SET</strong>
+                M2, S2, K1, O1
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="ocean-header">Short-period Ocean Tide (GOT5.5 / GOT5.6)</h2>
+        <div id="sp-chart" class="chart"></div>
+        <div class="legend">
+            <div class="legend-item"><span class="legend-color" style="background: #1f77b4;"></span>GOT5.5</div><div class="legend-item"><span class="legend-color" style="background: #2ca02c;"></span>GOT5.6</div>
+            <div class="legend-item"><span class="legend-color" style="background: #d62728;"></span>Tangent (Phase)</div>
+            <div class="legend-item"><span class="legend-color" style="background: #17becf;"></span>Tangent (Numerical)</div>
+        </div>
+        <div class="phase-toggle" id="sp-phase-toggle">
+            <strong style="margin-right: 5px; line-height: 28px;">Phase=0:</strong>
+            <button class="phase-btn active" data-const="m2" style="border-color: #e41a1c; background: #e41a1c;" onclick="toggleSpPhase('m2', this)">M2</button>
+            <button class="phase-btn active" data-const="s2" style="border-color: #377eb8; background: #377eb8;" onclick="toggleSpPhase('s2', this)">S2</button>
+            <button class="phase-btn active" data-const="k1" style="border-color: #4daf4a; background: #4daf4a;" onclick="toggleSpPhase('k1', this)">K1</button>
+            <button class="phase-btn active" data-const="o1" style="border-color: #984ea3; background: #984ea3;" onclick="toggleSpPhase('o1', this)">O1</button>
+            <button class="phase-btn active" data-const="n2" style="border-color: #ff7f00; background: #ff7f00;" onclick="toggleSpPhase('n2', this)">N2</button>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="card">
+            <h2 class="lp-header">Long-period Ocean Tide (RE14)</h2>
+            <div id="lp-chart" class="chart-small"></div>
+            <p style="font-size: 0.85em; color: #666;">
+                Long-period tides (Mf: 13.66 days, Mm: 27.55 days) show slow variations.
+                Only numerical derivative is shown (phase fitting unreliable for 72h window).
+            </p>
+        </div>
+
+        <div class="card">
+            <h2 class="set-header">Solid Earth Tide (Up Component)</h2>
+            <div id="set-chart" class="chart-small"></div>
+            <div class="legend">
+                <div class="legend-item"><span class="legend-color" style="background: #ff7f0e;"></span>SET Up</div>
+                <div class="legend-item"><span class="legend-color" style="background: #d62728;"></span>Tangent (Phase)</div>
+                <div class="legend-item"><span class="legend-color" style="background: #17becf;"></span>Tangent (Numerical)</div>
+            </div>
+            <div class="phase-toggle" id="set-phase-toggle">
+                <strong style="margin-right: 5px; line-height: 28px;">Phase=0:</strong>
+                <button class="phase-btn active" data-const="m2" style="border-color: #e41a1c; background: #e41a1c;" onclick="toggleSetPhase('m2', this)">M2</button>
+                <button class="phase-btn active" data-const="s2" style="border-color: #377eb8; background: #377eb8;" onclick="toggleSetPhase('s2', this)">S2</button>
+                <button class="phase-btn active" data-const="k1" style="border-color: #4daf4a; background: #4daf4a;" onclick="toggleSetPhase('k1', this)">K1</button>
+                <button class="phase-btn active" data-const="o1" style="border-color: #984ea3; background: #984ea3;" onclick="toggleSetPhase('o1', this)">O1</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Fitted Constituents</h2>
+        <div class="flex-row">
+            
+        <div class="card" style="flex: 1; min-width: 280px;">
+            <h3 style="color: #1f77b4; border-bottom: 2px solid #1f77b4;">GOT5.5</h3>
+            <table class="constituent-table">
+                <tr><th>Constituent</th><th>Period (h)</th><th>Amp (cm)</th><th>Phase (°)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>12.4206</td>
+                    <td>21.78</td>
+                    <td>-100.7</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>12.0000</td>
+                    <td>8.21</td>
+                    <td>161.4</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>23.9345</td>
+                    <td>21.05</td>
+                    <td>45.1</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>25.8193</td>
+                    <td>16.96</td>
+                    <td>111.1</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>12.6583</td>
+                    <td>6.04</td>
+                    <td>-111.9</td>
+                </tr>
+            <tr style="background: #e7f3ff;">
+                <td><strong>Offset</strong></td>
+                <td>-</td>
+                <td>0.02</td>
+                <td>-</td>
+            </tr>
+            </table>
+        </div>
+        <div class="card" style="flex: 1; min-width: 280px;">
+            <h3 style="color: #2ca02c; border-bottom: 2px solid #2ca02c;">GOT5.6</h3>
+            <table class="constituent-table">
+                <tr><th>Constituent</th><th>Period (h)</th><th>Amp (cm)</th><th>Phase (°)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>12.4206</td>
+                    <td>21.78</td>
+                    <td>-100.7</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>12.0000</td>
+                    <td>8.21</td>
+                    <td>161.4</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>23.9345</td>
+                    <td>21.05</td>
+                    <td>45.1</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>25.8193</td>
+                    <td>16.96</td>
+                    <td>111.1</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>12.6583</td>
+                    <td>6.04</td>
+                    <td>-111.9</td>
+                </tr>
+            <tr style="background: #e7f3ff;">
+                <td><strong>Offset</strong></td>
+                <td>-</td>
+                <td>0.02</td>
+                <td>-</td>
+            </tr>
+            </table>
+        </div>
+            <div class="card" style="flex: 1; min-width: 280px; background: #fff8f0;">
+                <h3 style="color: #e65100; border-bottom: 2px solid #e65100;">SET</h3>
+                <table class="constituent-table">
+                    <tr><th class="set">Constituent</th><th class="set">Period (h)</th><th class="set">Amp (mm)</th><th class="set">Phase (°)</th></tr>
+                    
+            <tr>
+                <td>M2</td>
+                <td>12.4206</td>
+                <td>157.914</td>
+                <td>77.2</td>
+            </tr>
+            <tr>
+                <td>S2</td>
+                <td>12.0000</td>
+                <td>26.312</td>
+                <td>-26.3</td>
+            </tr>
+            <tr>
+                <td>K1</td>
+                <td>23.9345</td>
+                <td>89.374</td>
+                <td>-122.3</td>
+            </tr>
+            <tr>
+                <td>O1</td>
+                <td>25.8193</td>
+                <td>89.212</td>
+                <td>-81.0</td>
+            </tr>
+                    <tr style="background: #fff3e0;">
+                        <td><strong>Offset</strong></td>
+                        <td>-</td>
+                        <td>14.760</td>
+                        <td>-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Random Point Analysis</h2>
+        <div class="flex-row">
+            
+        <div class="card" style="flex: 1; min-width: 320px;">
+            <h3 style="color: #1f77b4;">GOT5.5 Analysis</h3>
+            <table>
+                <tr><th>Pt</th><th>DateTime</th><th>cm</th><th>Phase</th><th>Num</th><th></th></tr>
+                
+                <tr>
+                    <td>Pt 1</td>
+                    <td>01-02 02:58</td>
+                    <td>7.90</td>
+                    <td>5.819</td>
+                    <td>6.381</td>
+                    <td class="warning">△</td>
+                </tr>
+                <tr>
+                    <td>Pt 2</td>
+                    <td>01-03 04:42</td>
+                    <td>15.71</td>
+                    <td>9.839</td>
+                    <td>9.749</td>
+                    <td class="good">✓</td>
+                </tr>
+                <tr>
+                    <td>Pt 3</td>
+                    <td>01-03 20:27</td>
+                    <td>25.69</td>
+                    <td>15.712</td>
+                    <td>16.361</td>
+                    <td class="warning">△</td>
+                </tr>
+            </table>
+            <h4>Constituent Breakdown</h4>
+            
+        <details>
+            <summary><strong>Point 1: 2026-01-02 02:58</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>320.9</td>
+                    <td>0.7764</td>
+                    <td>8.5523</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>250.4</td>
+                    <td>-0.3351</td>
+                    <td>-1.4409</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>90.7</td>
+                    <td>-0.0129</td>
+                    <td>-0.0711</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>127.1</td>
+                    <td>-0.6032</td>
+                    <td>-2.4901</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>295.0</td>
+                    <td>0.4230</td>
+                    <td>1.2687</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 2: 2026-01-03 04:42</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>346.9</td>
+                    <td>0.9739</td>
+                    <td>10.7285</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>302.5</td>
+                    <td>0.5376</td>
+                    <td>2.3114</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>117.8</td>
+                    <td>-0.4671</td>
+                    <td>-2.5816</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>125.9</td>
+                    <td>-0.5870</td>
+                    <td>-2.4234</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>307.0</td>
+                    <td>0.6014</td>
+                    <td>1.8037</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 3: 2026-01-03 20:27</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>83.3</td>
+                    <td>0.1163</td>
+                    <td>1.2813</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>55.0</td>
+                    <td>0.5742</td>
+                    <td>2.4688</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>354.7</td>
+                    <td>0.9957</td>
+                    <td>5.5035</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>345.5</td>
+                    <td>0.9682</td>
+                    <td>3.9970</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>34.8</td>
+                    <td>0.8208</td>
+                    <td>2.4617</td>
+                </tr>
+            </table>
+        </details>
+        </div>
+        <div class="card" style="flex: 1; min-width: 320px;">
+            <h3 style="color: #2ca02c;">GOT5.6 Analysis</h3>
+            <table>
+                <tr><th>Pt</th><th>DateTime</th><th>cm</th><th>Phase</th><th>Num</th><th></th></tr>
+                
+                <tr>
+                    <td>Pt 1</td>
+                    <td>01-02 02:58</td>
+                    <td>7.90</td>
+                    <td>5.819</td>
+                    <td>6.381</td>
+                    <td class="warning">△</td>
+                </tr>
+                <tr>
+                    <td>Pt 2</td>
+                    <td>01-03 04:42</td>
+                    <td>15.71</td>
+                    <td>9.839</td>
+                    <td>9.749</td>
+                    <td class="good">✓</td>
+                </tr>
+                <tr>
+                    <td>Pt 3</td>
+                    <td>01-03 20:27</td>
+                    <td>25.69</td>
+                    <td>15.712</td>
+                    <td>16.361</td>
+                    <td class="warning">△</td>
+                </tr>
+            </table>
+            <h4>Constituent Breakdown</h4>
+            
+        <details>
+            <summary><strong>Point 1: 2026-01-02 02:58</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>320.9</td>
+                    <td>0.7764</td>
+                    <td>8.5523</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>250.4</td>
+                    <td>-0.3351</td>
+                    <td>-1.4409</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>90.7</td>
+                    <td>-0.0129</td>
+                    <td>-0.0711</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>127.1</td>
+                    <td>-0.6032</td>
+                    <td>-2.4901</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>295.0</td>
+                    <td>0.4230</td>
+                    <td>1.2687</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 2: 2026-01-03 04:42</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>346.9</td>
+                    <td>0.9739</td>
+                    <td>10.7285</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>302.5</td>
+                    <td>0.5376</td>
+                    <td>2.3114</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>117.8</td>
+                    <td>-0.4671</td>
+                    <td>-2.5816</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>125.9</td>
+                    <td>-0.5870</td>
+                    <td>-2.4234</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>307.0</td>
+                    <td>0.6014</td>
+                    <td>1.8037</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 3: 2026-01-03 20:27</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (cm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>83.3</td>
+                    <td>0.1163</td>
+                    <td>1.2813</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>55.0</td>
+                    <td>0.5742</td>
+                    <td>2.4688</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>354.7</td>
+                    <td>0.9957</td>
+                    <td>5.5035</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>345.5</td>
+                    <td>0.9682</td>
+                    <td>3.9970</td>
+                </tr>
+                <tr>
+                    <td>N2</td>
+                    <td>34.8</td>
+                    <td>0.8208</td>
+                    <td>2.4617</td>
+                </tr>
+            </table>
+        </details>
+        </div>
+            <div class="card" style="flex: 1; min-width: 280px; background: #faf0ff;">
+                <h3 style="color: #9467bd;">RE14 (Long-period)</h3>
+                <table>
+                    <tr><th class="lp">Pt</th><th class="lp">DateTime</th><th class="lp">cm</th><th class="lp">Num Deriv</th></tr>
+                    
+            <tr>
+                <td>Pt 1</td>
+                <td>01-02 02:58</td>
+                <td>7.902</td>
+                <td>6.3812</td>
+            </tr>
+            <tr>
+                <td>Pt 2</td>
+                <td>01-03 04:42</td>
+                <td>15.709</td>
+                <td>9.7492</td>
+            </tr>
+            <tr>
+                <td>Pt 3</td>
+                <td>01-03 20:27</td>
+                <td>25.693</td>
+                <td>16.3608</td>
+            </tr>
+                </table>
+            </div>
+            <div class="card" style="flex: 1; min-width: 320px; background: #fff8f0;">
+                <h3 style="color: #e65100;">SET Analysis</h3>
+                <table>
+                    <tr><th class="set">Pt</th><th class="set">DateTime</th><th class="set">mm</th><th class="set">Phase</th><th class="set">Num</th><th class="set"></th></tr>
+                    
+            <tr>
+                <td>Pt 1</td>
+                <td>01-02 02:58</td>
+                <td>-25.74</td>
+                <td>-39.241</td>
+                <td>-42.289</td>
+                <td class="warning">△</td>
+            </tr>
+            <tr>
+                <td>Pt 2</td>
+                <td>01-03 04:42</td>
+                <td>-68.25</td>
+                <td>-58.877</td>
+                <td>-58.042</td>
+                <td class="good">✓</td>
+            </tr>
+            <tr>
+                <td>Pt 3</td>
+                <td>01-03 20:27</td>
+                <td>-129.95</td>
+                <td>-64.238</td>
+                <td>-66.323</td>
+                <td class="warning">△</td>
+            </tr>
+                </table>
+                <h4>Constituent Breakdown</h4>
+                
+        <details>
+            <summary><strong>Point 1: 2026-01-02 02:58</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (mm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>138.8</td>
+                    <td>-0.7527</td>
+                    <td>-60.1309</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>62.7</td>
+                    <td>0.4590</td>
+                    <td>6.3233</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>283.3</td>
+                    <td>0.2300</td>
+                    <td>5.3966</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>295.0</td>
+                    <td>0.4224</td>
+                    <td>9.1697</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 2: 2026-01-03 04:42</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (mm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>164.8</td>
+                    <td>-0.9649</td>
+                    <td>-77.0826</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>114.8</td>
+                    <td>-0.4191</td>
+                    <td>-5.7743</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>310.4</td>
+                    <td>0.6482</td>
+                    <td>15.2078</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>293.8</td>
+                    <td>0.4041</td>
+                    <td>8.7720</td>
+                </tr>
+            </table>
+        </details>
+        <details>
+            <summary><strong>Point 3: 2026-01-03 20:27</strong></summary>
+            <table style="margin: 10px 0;">
+                <tr><th>Constituent</th><th>Phase (°)</th><th>cos(φ)</th><th>Deriv (mm/h)</th></tr>
+                
+                <tr>
+                    <td>M2</td>
+                    <td>261.2</td>
+                    <td>-0.1526</td>
+                    <td>-12.1940</td>
+                </tr>
+                <tr>
+                    <td>S2</td>
+                    <td>227.2</td>
+                    <td>-0.6792</td>
+                    <td>-9.3580</td>
+                </tr>
+                <tr>
+                    <td>K1</td>
+                    <td>187.3</td>
+                    <td>-0.9920</td>
+                    <td>-23.2734</td>
+                </tr>
+                <tr>
+                    <td>O1</td>
+                    <td>153.4</td>
+                    <td>-0.8942</td>
+                    <td>-19.4129</td>
+                </tr>
+            </table>
+        </details>
+            </div>
+        </div>
+    </div>
+
+    <div class="card timing">
+        <h2>Computation Timing</h2>
+        <table style="max-width: 400px;">
+            <tr><th>Step</th><th>Time (ms)</th></tr>
+            <tr><td>GOT5.5 init</td><td>2158.2</td></tr><tr><td>GOT5.5 compute</td><td>22.3</td></tr><tr><td>GOT5.6 init</td><td>1615.8</td></tr><tr><td>GOT5.6 compute</td><td>2.0</td></tr><tr><td>RE14 init</td><td>1753.7</td></tr><tr><td>RE14 compute</td><td>2.1</td></tr><tr><td>SET compute</td><td>17.0</td></tr>
+        </table>
+    </div>
+</div>
+
+<script>
+const spData = {"GOT5.5": {"curve": [[0.0, 5.965232275766811], [0.30125523009337485, 4.815379356026423], [0.6025104601867497, 4.081467486655111], [0.9037656904547475, 3.786255824987178], [1.2050209205481224, 3.939978181968268], [1.5062761506414972, 4.540294200611516], [1.807531380734872, 5.572450217175826], [2.108786610828247, 7.009632486381534], [2.4100418409216218, 8.813501758271633], [2.7112970711896196, 10.934904993319181], [3.0125523012829944, 13.314766094568336], [3.3138075313763693, 15.88516186472114], [3.615062761469744, 18.570590963340873], [3.916317991563119, 21.289442018433085], [4.217573221831117, 23.95566185953341], [4.518828451924492, 26.480616353532117], [4.8200836820178665, 28.7751251081602], [5.121338912111241, 30.75163813918666], [5.422594142204616, 32.32650882141769], [5.723849372297991, 33.42230416163544], [6.025104602565989, 33.97008210336908], [6.326359832659364, 33.91155736628832], [6.627615062752739, 33.2010732701294], [6.928870292846113, 31.80729776365221], [7.230125522939488, 29.714567818563296], [7.531380753207486, 26.923817293859], [7.832635983300861, 23.453038838015576], [8.133891213394236, 19.337249375826403], [8.43514644348761, 14.627950146869312], [8.736401673580986, 9.392094481391133], [9.037656903848983, 3.7105982078195265], [9.338912133942358, -2.3235527865043015], [9.640167364035733, -8.60752713681078], [9.941422594129108, -15.03112202799871], [10.242677824222483, -21.479397252231752], [10.543933054315858, -27.83537825752417], [10.845188284583855, -33.98274072503149], [11.14644351467723, -39.80839725675881], [11.447698744770605, -45.20491850873926], [11.74895397486398, -50.07273509368666], [12.050209204957355, -54.32208194518384], [12.351464435225353, -57.874661811464165], [12.652719665318727, -60.6650181940236], [12.953974895412102, -62.64161930396477], [13.255230125505477, -63.767662637184216], [13.556485355598852, -64.0216144804581], [13.857740585692227, -63.39749982880485], [14.158995815960225, -61.90495640559691], [14.4602510460536, -59.569062384594204], [14.761506276146974, -56.42994196641268], [15.06276150624035, -52.542147333137514], [15.364016736333724, -47.97381070294801], [15.665271966601722, -42.80555735488557], [15.966527196695097, -37.12917037050875], [16.26778242678847, -31.046000889495613], [16.569037656881846, -24.665124316582205], [16.87029288697522, -18.1012525688768], [17.171548117068596, -11.472424908666941], [17.472803347336594, -4.897514026927596], [17.77405857742997, 1.506401191333004], [18.075313807523344, 7.626730815735786], [18.37656903761672, 13.358059354746784], [18.677824267710093, 18.604735321192184], [18.97907949797809, 23.283273984976894], [19.280334728071466, 27.324482828791925], [19.58158995816484, 30.67522496947712], [19.882845188258216, 33.29974662850715], [20.18410041835159, 35.1805104692944], [20.48535564861959, 36.3184960465891], [20.786610878712963, 36.73295077538761], [21.087866108806338, 36.4605982345668], [21.389121338899713, 35.55433374373266], [21.690376568993088, 34.081458579545476], [21.991631799086463, 32.121522500927966], [22.29288702935446, 29.763858394469512], [22.594142259447835, 27.104902059739345], [22.89539748954121, 24.24539401495813], [23.196652719634585, 21.28755887703026], [23.49790794972796, 18.332351619592906], [23.799163179995958, 15.476849795836428], [24.100418410089333, 12.81185757883481], [24.401673640182707, 10.419772435312202], [24.702928870276082, 8.372749803701627], [25.004184100369457, 6.731186301333672], [25.305439330462832, 5.542528995836293], [25.60669456073083, 4.840407788725287], [25.907949790824205, 4.6440805175907345], [26.20920502091758, 4.95817608475802], [26.510460251010954, 5.772719583870684], [26.81171548110433, 7.063424449332165], [27.112970711372327, 8.79223938774606], [27.414225941465702, 10.908141299042015], [27.715481171559077, 13.348168643005803], [28.01673640165245, 16.038691744147833], [28.317991631745826, 18.896916716539398], [28.6192468618392, 21.83261737503276], [28.9205020921072, 24.750084529012906], [29.221757322200574, 27.55027447064473], [29.52301255229395, 30.133128759436325], [29.824267782387324, 32.40002613204301], [30.1255230124807, 34.25631568256856], [30.426778242748696, 35.613869230576256], [30.72803347284207, 36.39358127988441], [31.029288702935446, 36.527738194449874], [31.33054393302882, 35.96217502137952], [31.631799163122196, 34.658139509183215], [31.933054393390194, 32.59378851215035], [32.23430962348357, 29.76525218027274], [32.53556485357694, 26.18721561910149], [32.83682008367032, 21.892985433301103], [33.13807531376369, 16.934028560719195], [33.43933054385707, 11.378991975520137], [33.740585774125066, 5.312232772043524], [34.04184100421844, -1.1680924157689954], [34.343096234311815, -7.9523130847273], [34.64435146440519, -14.921826935634453], [34.945606694498565, -21.9518911955458], [35.24686192476656, -28.914532121184767], [35.54811715485994, -35.68148249080456], [35.84937238495331, -42.12706220786449], [36.15062761504669, -48.13092589792042], [36.45188284514006, -53.58061316359737], [36.75313807523344, -58.37385037464367], [37.054393305501435, -62.420566717752365], [37.35564853559481, -65.64460046487899], [37.656903765688185, -67.98508321098831], [37.95815899578156, -69.3974992776284], [38.259414225874934, -69.8544244378218], [38.56066945614293, -69.3459521738605], [38.86192468623631, -67.8798172365968], [39.16317991632968, -65.4812257010582], [39.46443514642306, -62.192398762821256], [39.76569037651643, -58.07183498637196], [40.066945606609806, -53.19329352897086], [40.368200836877804, -47.64449983948398], [40.66945606697118, -41.52557621766693], [40.970711297064554, -34.94720277633641], [41.27196652715793, -28.028520272298472], [41.573221757251304, -20.894794452196308], [41.8744769875193, -13.67487200005995], [42.175732217612676, -6.498469966041704], [42.47698744770605, 0.506647244507083], [42.778242677799426, 7.2175373496786515], [43.0794979078928, 13.5189202107309], [43.3807531381608, 19.305904963907818], [43.68200836825417, 24.486517012404065], [43.98326359834755, 28.983938110289976], [44.28451882844092, 32.738377689072465], [44.5857740585343, 35.70850336502588], [44.88702928862767, 37.872372465464736], [45.18828451889567, 39.22782404242541], [45.489539748989046, 39.79231111581671], [45.79079497908242, 39.6021746909264], [46.092050209175795, 38.7113830669407], [46.39330543926917, 37.18978087581849], [46.69456066953717, 35.12091082459106], [46.99581589963054, 32.59948628874032], [47.29707112972392, 29.728603838847583], [47.59832635981729, 26.616791111562847], [47.89958158991067, 23.37498686187258], [48.20083682000404, 20.11354691642862], [48.50209205027204, 16.939362512406817], [48.803347280365415, 13.953166993897492], [49.10460251045879, 11.247093945770262], [49.405857740552165, 8.90253579573145], [49.70711297064554, 6.9883375432330865], [50.00836820091354, 5.559346790489508], [50.30962343100691, 4.655329310339567], [50.61087866110029, 4.300249599490661], [50.91213389119366, 4.501908583819722], [51.21338912128704, 5.2519257784113424], [51.51464435138041, 6.526050617076275], [51.81589958164841, 8.28478680341265], [52.117154811741784, 10.474313782396925], [52.41841004183516, 13.027690090322366], [52.719665271928534, 15.866323595333181], [53.02092050202191, 18.901692971469224], [53.32217573228991, 22.03730253420305], [53.62343096238328, 25.170848590599594], [53.924686192476656, 28.196569713015062], [54.22594142257003, 31.00774591477422], [54.527196652663406, 33.49930328243554], [54.828451882931404, 35.57047164547053], [55.12970711302478, 37.12743429937885], [55.43096234311815, 38.08590149835251], [55.73221757321153, 38.373534184030746], [56.0334728033049, 37.932142130034144], [56.33472803339828, 36.71958178935332], [56.635983263666276, 34.711284082822964], [56.93723849375965, 31.90135119052897], [57.238493723853026, 28.303173833886326], [57.5397489539464, 23.949536140958973], [57.841004184039775, 18.892193041847754], [58.14225941430777, 13.200924407963516], [58.44351464440115, 6.962089666068771], [58.74476987449452, 0.27672517263172547], [59.0460251045879, -6.741756589326458], [59.34728033468127, -13.97019328213801], [59.64853556477465, -21.278541547871193], [59.949790795042645, -28.532899494621848], [60.25104602513602, -35.5985921174466], [60.552301255229395, -42.34323138253858], [60.85355648532277, -48.63966861600238], [61.154811715416145, -54.36876609650043], [61.45606694568414, -59.42192598935093], [61.75732217577752, -63.703327374997244], [62.05857740587089, -67.13183511926235], [62.35983263596427, -69.64255662188324], [62.66108786605764, -71.18803368651436], [62.96234309615102, -71.73906596596593], [63.263598326419014, -71.28516959912825], [63.56485355651239, -69.83467961590576], [63.866108786605764, -67.41450764854568], [64.16736401669914, -64.06956788263001], [64.46861924679251, -59.86188453324161], [64.76987447706051, -54.86939411814742], [65.07112970715389, -49.1844561033557], [65.37238493724726, -42.91208661639849], [65.67364016734064, -36.16793258680399], [65.97489539743401, -29.076007800271686], [66.27615062770201, -21.766218366522388], [66.57740585779538, -14.371712622106902], [66.87866108788876, -7.026099056613839], [67.17991631798213, 0.1394148178774382], [67.48117154807551, 6.998900934779447], [67.78242677816888, 13.434536802937751], [68.08368200843688, 19.339303723376766], [68.38493723853026, 24.619478269035373], [68.68619246862363, 29.196838393950024], [68.987447698717, 33.010509296269696], [69.28870292881038, 36.01838206674309], [69.58995815907838, 38.19804965140189], [69.89121338917175, 39.5472196076155], [70.19246861926513, 40.08358077447273], [70.4937238493585, 39.84412034960558], [70.79497907945188, 38.883908071358306], [71.09623430954525, 37.27438396701835], [71.39748953981325, 35.101204447261324], [71.69874476990663, 32.46171735282546], [72.0, 29.462149011735168]], "points": [{"hours": 26.96688855701359, "value": 7.902128465011575, "derivative": 5.818854441987874, "derivative_numerical": 6.38116199244719, "datetime": "2026-01-02 02:58"}, {"hours": 52.70356381038437, "value": 15.708803593118992, "derivative": 9.838623135603381, "derivative_numerical": 9.749213116277177, "datetime": "2026-01-03 04:42"}, {"hours": 68.45143006159924, "value": 25.692644088873273, "derivative": 15.712401640061502, "derivative_numerical": 16.360769350822373, "datetime": "2026-01-03 20:27"}], "color": "#1f77b4"}, "GOT5.6": {"curve": [[0.0, 5.965232275766811], [0.30125523009337485, 4.815379356026423], [0.6025104601867497, 4.081467486655111], [0.9037656904547475, 3.786255824987178], [1.2050209205481224, 3.939978181968268], [1.5062761506414972, 4.540294200611516], [1.807531380734872, 5.572450217175826], [2.108786610828247, 7.009632486381534], [2.4100418409216218, 8.813501758271633], [2.7112970711896196, 10.934904993319181], [3.0125523012829944, 13.314766094568336], [3.3138075313763693, 15.88516186472114], [3.615062761469744, 18.570590963340873], [3.916317991563119, 21.289442018433085], [4.217573221831117, 23.95566185953341], [4.518828451924492, 26.480616353532117], [4.8200836820178665, 28.7751251081602], [5.121338912111241, 30.75163813918666], [5.422594142204616, 32.32650882141769], [5.723849372297991, 33.42230416163544], [6.025104602565989, 33.97008210336908], [6.326359832659364, 33.91155736628832], [6.627615062752739, 33.2010732701294], [6.928870292846113, 31.80729776365221], [7.230125522939488, 29.714567818563296], [7.531380753207486, 26.923817293859], [7.832635983300861, 23.453038838015576], [8.133891213394236, 19.337249375826403], [8.43514644348761, 14.627950146869312], [8.736401673580986, 9.392094481391133], [9.037656903848983, 3.7105982078195265], [9.338912133942358, -2.3235527865043015], [9.640167364035733, -8.60752713681078], [9.941422594129108, -15.03112202799871], [10.242677824222483, -21.479397252231752], [10.543933054315858, -27.83537825752417], [10.845188284583855, -33.98274072503149], [11.14644351467723, -39.80839725675881], [11.447698744770605, -45.20491850873926], [11.74895397486398, -50.07273509368666], [12.050209204957355, -54.32208194518384], [12.351464435225353, -57.874661811464165], [12.652719665318727, -60.6650181940236], [12.953974895412102, -62.64161930396477], [13.255230125505477, -63.767662637184216], [13.556485355598852, -64.0216144804581], [13.857740585692227, -63.39749982880485], [14.158995815960225, -61.90495640559691], [14.4602510460536, -59.569062384594204], [14.761506276146974, -56.42994196641268], [15.06276150624035, -52.542147333137514], [15.364016736333724, -47.97381070294801], [15.665271966601722, -42.80555735488557], [15.966527196695097, -37.12917037050875], [16.26778242678847, -31.046000889495613], [16.569037656881846, -24.665124316582205], [16.87029288697522, -18.1012525688768], [17.171548117068596, -11.472424908666941], [17.472803347336594, -4.897514026927596], [17.77405857742997, 1.506401191333004], [18.075313807523344, 7.626730815735786], [18.37656903761672, 13.358059354746784], [18.677824267710093, 18.604735321192184], [18.97907949797809, 23.283273984976894], [19.280334728071466, 27.324482828791925], [19.58158995816484, 30.67522496947712], [19.882845188258216, 33.29974662850715], [20.18410041835159, 35.1805104692944], [20.48535564861959, 36.3184960465891], [20.786610878712963, 36.73295077538761], [21.087866108806338, 36.4605982345668], [21.389121338899713, 35.55433374373266], [21.690376568993088, 34.081458579545476], [21.991631799086463, 32.121522500927966], [22.29288702935446, 29.763858394469512], [22.594142259447835, 27.104902059739345], [22.89539748954121, 24.24539401495813], [23.196652719634585, 21.28755887703026], [23.49790794972796, 18.332351619592906], [23.799163179995958, 15.476849795836428], [24.100418410089333, 12.81185757883481], [24.401673640182707, 10.419772435312202], [24.702928870276082, 8.372749803701627], [25.004184100369457, 6.731186301333672], [25.305439330462832, 5.542528995836293], [25.60669456073083, 4.840407788725287], [25.907949790824205, 4.6440805175907345], [26.20920502091758, 4.95817608475802], [26.510460251010954, 5.772719583870684], [26.81171548110433, 7.063424449332165], [27.112970711372327, 8.79223938774606], [27.414225941465702, 10.908141299042015], [27.715481171559077, 13.348168643005803], [28.01673640165245, 16.038691744147833], [28.317991631745826, 18.896916716539398], [28.6192468618392, 21.83261737503276], [28.9205020921072, 24.750084529012906], [29.221757322200574, 27.55027447064473], [29.52301255229395, 30.133128759436325], [29.824267782387324, 32.40002613204301], [30.1255230124807, 34.25631568256856], [30.426778242748696, 35.613869230576256], [30.72803347284207, 36.39358127988441], [31.029288702935446, 36.527738194449874], [31.33054393302882, 35.96217502137952], [31.631799163122196, 34.658139509183215], [31.933054393390194, 32.59378851215035], [32.23430962348357, 29.76525218027274], [32.53556485357694, 26.18721561910149], [32.83682008367032, 21.892985433301103], [33.13807531376369, 16.934028560719195], [33.43933054385707, 11.378991975520137], [33.740585774125066, 5.312232772043524], [34.04184100421844, -1.1680924157689954], [34.343096234311815, -7.9523130847273], [34.64435146440519, -14.921826935634453], [34.945606694498565, -21.9518911955458], [35.24686192476656, -28.914532121184767], [35.54811715485994, -35.68148249080456], [35.84937238495331, -42.12706220786449], [36.15062761504669, -48.13092589792042], [36.45188284514006, -53.58061316359737], [36.75313807523344, -58.37385037464367], [37.054393305501435, -62.420566717752365], [37.35564853559481, -65.64460046487899], [37.656903765688185, -67.98508321098831], [37.95815899578156, -69.3974992776284], [38.259414225874934, -69.8544244378218], [38.56066945614293, -69.3459521738605], [38.86192468623631, -67.8798172365968], [39.16317991632968, -65.4812257010582], [39.46443514642306, -62.192398762821256], [39.76569037651643, -58.07183498637196], [40.066945606609806, -53.19329352897086], [40.368200836877804, -47.64449983948398], [40.66945606697118, -41.52557621766693], [40.970711297064554, -34.94720277633641], [41.27196652715793, -28.028520272298472], [41.573221757251304, -20.894794452196308], [41.8744769875193, -13.67487200005995], [42.175732217612676, -6.498469966041704], [42.47698744770605, 0.506647244507083], [42.778242677799426, 7.2175373496786515], [43.0794979078928, 13.5189202107309], [43.3807531381608, 19.305904963907818], [43.68200836825417, 24.486517012404065], [43.98326359834755, 28.983938110289976], [44.28451882844092, 32.738377689072465], [44.5857740585343, 35.70850336502588], [44.88702928862767, 37.872372465464736], [45.18828451889567, 39.22782404242541], [45.489539748989046, 39.79231111581671], [45.79079497908242, 39.6021746909264], [46.092050209175795, 38.7113830669407], [46.39330543926917, 37.18978087581849], [46.69456066953717, 35.12091082459106], [46.99581589963054, 32.59948628874032], [47.29707112972392, 29.728603838847583], [47.59832635981729, 26.616791111562847], [47.89958158991067, 23.37498686187258], [48.20083682000404, 20.11354691642862], [48.50209205027204, 16.939362512406817], [48.803347280365415, 13.953166993897492], [49.10460251045879, 11.247093945770262], [49.405857740552165, 8.90253579573145], [49.70711297064554, 6.9883375432330865], [50.00836820091354, 5.559346790489508], [50.30962343100691, 4.655329310339567], [50.61087866110029, 4.300249599490661], [50.91213389119366, 4.501908583819722], [51.21338912128704, 5.2519257784113424], [51.51464435138041, 6.526050617076275], [51.81589958164841, 8.28478680341265], [52.117154811741784, 10.474313782396925], [52.41841004183516, 13.027690090322366], [52.719665271928534, 15.866323595333181], [53.02092050202191, 18.901692971469224], [53.32217573228991, 22.03730253420305], [53.62343096238328, 25.170848590599594], [53.924686192476656, 28.196569713015062], [54.22594142257003, 31.00774591477422], [54.527196652663406, 33.49930328243554], [54.828451882931404, 35.57047164547053], [55.12970711302478, 37.12743429937885], [55.43096234311815, 38.08590149835251], [55.73221757321153, 38.373534184030746], [56.0334728033049, 37.932142130034144], [56.33472803339828, 36.71958178935332], [56.635983263666276, 34.711284082822964], [56.93723849375965, 31.90135119052897], [57.238493723853026, 28.303173833886326], [57.5397489539464, 23.949536140958973], [57.841004184039775, 18.892193041847754], [58.14225941430777, 13.200924407963516], [58.44351464440115, 6.962089666068771], [58.74476987449452, 0.27672517263172547], [59.0460251045879, -6.741756589326458], [59.34728033468127, -13.97019328213801], [59.64853556477465, -21.278541547871193], [59.949790795042645, -28.532899494621848], [60.25104602513602, -35.5985921174466], [60.552301255229395, -42.34323138253858], [60.85355648532277, -48.63966861600238], [61.154811715416145, -54.36876609650043], [61.45606694568414, -59.42192598935093], [61.75732217577752, -63.703327374997244], [62.05857740587089, -67.13183511926235], [62.35983263596427, -69.64255662188324], [62.66108786605764, -71.18803368651436], [62.96234309615102, -71.73906596596593], [63.263598326419014, -71.28516959912825], [63.56485355651239, -69.83467961590576], [63.866108786605764, -67.41450764854568], [64.16736401669914, -64.06956788263001], [64.46861924679251, -59.86188453324161], [64.76987447706051, -54.86939411814742], [65.07112970715389, -49.1844561033557], [65.37238493724726, -42.91208661639849], [65.67364016734064, -36.16793258680399], [65.97489539743401, -29.076007800271686], [66.27615062770201, -21.766218366522388], [66.57740585779538, -14.371712622106902], [66.87866108788876, -7.026099056613839], [67.17991631798213, 0.1394148178774382], [67.48117154807551, 6.998900934779447], [67.78242677816888, 13.434536802937751], [68.08368200843688, 19.339303723376766], [68.38493723853026, 24.619478269035373], [68.68619246862363, 29.196838393950024], [68.987447698717, 33.010509296269696], [69.28870292881038, 36.01838206674309], [69.58995815907838, 38.19804965140189], [69.89121338917175, 39.5472196076155], [70.19246861926513, 40.08358077447273], [70.4937238493585, 39.84412034960558], [70.79497907945188, 38.883908071358306], [71.09623430954525, 37.27438396701835], [71.39748953981325, 35.101204447261324], [71.69874476990663, 32.46171735282546], [72.0, 29.462149011735168]], "points": [{"hours": 26.96688855701359, "value": 7.902128465011575, "derivative": 5.818854441987874, "derivative_numerical": 6.38116199244719, "datetime": "2026-01-02 02:58"}, {"hours": 52.70356381038437, "value": 15.708803593118992, "derivative": 9.838623135603381, "derivative_numerical": 9.749213116277177, "datetime": "2026-01-03 04:42"}, {"hours": 68.45143006159924, "value": 25.692644088873273, "derivative": 15.712401640061502, "derivative_numerical": 16.360769350822373, "datetime": "2026-01-03 20:27"}], "color": "#2ca02c"}};
+const lpData = {"curve": [[0.0, 5.965232275766811], [0.30125523009337485, 4.815379356026423], [0.6025104601867497, 4.081467486655111], [0.9037656904547475, 3.786255824987178], [1.2050209205481224, 3.939978181968268], [1.5062761506414972, 4.540294200611516], [1.807531380734872, 5.572450217175826], [2.108786610828247, 7.009632486381534], [2.4100418409216218, 8.813501758271633], [2.7112970711896196, 10.934904993319181], [3.0125523012829944, 13.314766094568336], [3.3138075313763693, 15.88516186472114], [3.615062761469744, 18.570590963340873], [3.916317991563119, 21.289442018433085], [4.217573221831117, 23.95566185953341], [4.518828451924492, 26.480616353532117], [4.8200836820178665, 28.7751251081602], [5.121338912111241, 30.75163813918666], [5.422594142204616, 32.32650882141769], [5.723849372297991, 33.42230416163544], [6.025104602565989, 33.97008210336908], [6.326359832659364, 33.91155736628832], [6.627615062752739, 33.2010732701294], [6.928870292846113, 31.80729776365221], [7.230125522939488, 29.714567818563296], [7.531380753207486, 26.923817293859], [7.832635983300861, 23.453038838015576], [8.133891213394236, 19.337249375826403], [8.43514644348761, 14.627950146869312], [8.736401673580986, 9.392094481391133], [9.037656903848983, 3.7105982078195265], [9.338912133942358, -2.3235527865043015], [9.640167364035733, -8.60752713681078], [9.941422594129108, -15.03112202799871], [10.242677824222483, -21.479397252231752], [10.543933054315858, -27.83537825752417], [10.845188284583855, -33.98274072503149], [11.14644351467723, -39.80839725675881], [11.447698744770605, -45.20491850873926], [11.74895397486398, -50.07273509368666], [12.050209204957355, -54.32208194518384], [12.351464435225353, -57.874661811464165], [12.652719665318727, -60.6650181940236], [12.953974895412102, -62.64161930396477], [13.255230125505477, -63.767662637184216], [13.556485355598852, -64.0216144804581], [13.857740585692227, -63.39749982880485], [14.158995815960225, -61.90495640559691], [14.4602510460536, -59.569062384594204], [14.761506276146974, -56.42994196641268], [15.06276150624035, -52.542147333137514], [15.364016736333724, -47.97381070294801], [15.665271966601722, -42.80555735488557], [15.966527196695097, -37.12917037050875], [16.26778242678847, -31.046000889495613], [16.569037656881846, -24.665124316582205], [16.87029288697522, -18.1012525688768], [17.171548117068596, -11.472424908666941], [17.472803347336594, -4.897514026927596], [17.77405857742997, 1.506401191333004], [18.075313807523344, 7.626730815735786], [18.37656903761672, 13.358059354746784], [18.677824267710093, 18.604735321192184], [18.97907949797809, 23.283273984976894], [19.280334728071466, 27.324482828791925], [19.58158995816484, 30.67522496947712], [19.882845188258216, 33.29974662850715], [20.18410041835159, 35.1805104692944], [20.48535564861959, 36.3184960465891], [20.786610878712963, 36.73295077538761], [21.087866108806338, 36.4605982345668], [21.389121338899713, 35.55433374373266], [21.690376568993088, 34.081458579545476], [21.991631799086463, 32.121522500927966], [22.29288702935446, 29.763858394469512], [22.594142259447835, 27.104902059739345], [22.89539748954121, 24.24539401495813], [23.196652719634585, 21.28755887703026], [23.49790794972796, 18.332351619592906], [23.799163179995958, 15.476849795836428], [24.100418410089333, 12.81185757883481], [24.401673640182707, 10.419772435312202], [24.702928870276082, 8.372749803701627], [25.004184100369457, 6.731186301333672], [25.305439330462832, 5.542528995836293], [25.60669456073083, 4.840407788725287], [25.907949790824205, 4.6440805175907345], [26.20920502091758, 4.95817608475802], [26.510460251010954, 5.772719583870684], [26.81171548110433, 7.063424449332165], [27.112970711372327, 8.79223938774606], [27.414225941465702, 10.908141299042015], [27.715481171559077, 13.348168643005803], [28.01673640165245, 16.038691744147833], [28.317991631745826, 18.896916716539398], [28.6192468618392, 21.83261737503276], [28.9205020921072, 24.750084529012906], [29.221757322200574, 27.55027447064473], [29.52301255229395, 30.133128759436325], [29.824267782387324, 32.40002613204301], [30.1255230124807, 34.25631568256856], [30.426778242748696, 35.613869230576256], [30.72803347284207, 36.39358127988441], [31.029288702935446, 36.527738194449874], [31.33054393302882, 35.96217502137952], [31.631799163122196, 34.658139509183215], [31.933054393390194, 32.59378851215035], [32.23430962348357, 29.76525218027274], [32.53556485357694, 26.18721561910149], [32.83682008367032, 21.892985433301103], [33.13807531376369, 16.934028560719195], [33.43933054385707, 11.378991975520137], [33.740585774125066, 5.312232772043524], [34.04184100421844, -1.1680924157689954], [34.343096234311815, -7.9523130847273], [34.64435146440519, -14.921826935634453], [34.945606694498565, -21.9518911955458], [35.24686192476656, -28.914532121184767], [35.54811715485994, -35.68148249080456], [35.84937238495331, -42.12706220786449], [36.15062761504669, -48.13092589792042], [36.45188284514006, -53.58061316359737], [36.75313807523344, -58.37385037464367], [37.054393305501435, -62.420566717752365], [37.35564853559481, -65.64460046487899], [37.656903765688185, -67.98508321098831], [37.95815899578156, -69.3974992776284], [38.259414225874934, -69.8544244378218], [38.56066945614293, -69.3459521738605], [38.86192468623631, -67.8798172365968], [39.16317991632968, -65.4812257010582], [39.46443514642306, -62.192398762821256], [39.76569037651643, -58.07183498637196], [40.066945606609806, -53.19329352897086], [40.368200836877804, -47.64449983948398], [40.66945606697118, -41.52557621766693], [40.970711297064554, -34.94720277633641], [41.27196652715793, -28.028520272298472], [41.573221757251304, -20.894794452196308], [41.8744769875193, -13.67487200005995], [42.175732217612676, -6.498469966041704], [42.47698744770605, 0.506647244507083], [42.778242677799426, 7.2175373496786515], [43.0794979078928, 13.5189202107309], [43.3807531381608, 19.305904963907818], [43.68200836825417, 24.486517012404065], [43.98326359834755, 28.983938110289976], [44.28451882844092, 32.738377689072465], [44.5857740585343, 35.70850336502588], [44.88702928862767, 37.872372465464736], [45.18828451889567, 39.22782404242541], [45.489539748989046, 39.79231111581671], [45.79079497908242, 39.6021746909264], [46.092050209175795, 38.7113830669407], [46.39330543926917, 37.18978087581849], [46.69456066953717, 35.12091082459106], [46.99581589963054, 32.59948628874032], [47.29707112972392, 29.728603838847583], [47.59832635981729, 26.616791111562847], [47.89958158991067, 23.37498686187258], [48.20083682000404, 20.11354691642862], [48.50209205027204, 16.939362512406817], [48.803347280365415, 13.953166993897492], [49.10460251045879, 11.247093945770262], [49.405857740552165, 8.90253579573145], [49.70711297064554, 6.9883375432330865], [50.00836820091354, 5.559346790489508], [50.30962343100691, 4.655329310339567], [50.61087866110029, 4.300249599490661], [50.91213389119366, 4.501908583819722], [51.21338912128704, 5.2519257784113424], [51.51464435138041, 6.526050617076275], [51.81589958164841, 8.28478680341265], [52.117154811741784, 10.474313782396925], [52.41841004183516, 13.027690090322366], [52.719665271928534, 15.866323595333181], [53.02092050202191, 18.901692971469224], [53.32217573228991, 22.03730253420305], [53.62343096238328, 25.170848590599594], [53.924686192476656, 28.196569713015062], [54.22594142257003, 31.00774591477422], [54.527196652663406, 33.49930328243554], [54.828451882931404, 35.57047164547053], [55.12970711302478, 37.12743429937885], [55.43096234311815, 38.08590149835251], [55.73221757321153, 38.373534184030746], [56.0334728033049, 37.932142130034144], [56.33472803339828, 36.71958178935332], [56.635983263666276, 34.711284082822964], [56.93723849375965, 31.90135119052897], [57.238493723853026, 28.303173833886326], [57.5397489539464, 23.949536140958973], [57.841004184039775, 18.892193041847754], [58.14225941430777, 13.200924407963516], [58.44351464440115, 6.962089666068771], [58.74476987449452, 0.27672517263172547], [59.0460251045879, -6.741756589326458], [59.34728033468127, -13.97019328213801], [59.64853556477465, -21.278541547871193], [59.949790795042645, -28.532899494621848], [60.25104602513602, -35.5985921174466], [60.552301255229395, -42.34323138253858], [60.85355648532277, -48.63966861600238], [61.154811715416145, -54.36876609650043], [61.45606694568414, -59.42192598935093], [61.75732217577752, -63.703327374997244], [62.05857740587089, -67.13183511926235], [62.35983263596427, -69.64255662188324], [62.66108786605764, -71.18803368651436], [62.96234309615102, -71.73906596596593], [63.263598326419014, -71.28516959912825], [63.56485355651239, -69.83467961590576], [63.866108786605764, -67.41450764854568], [64.16736401669914, -64.06956788263001], [64.46861924679251, -59.86188453324161], [64.76987447706051, -54.86939411814742], [65.07112970715389, -49.1844561033557], [65.37238493724726, -42.91208661639849], [65.67364016734064, -36.16793258680399], [65.97489539743401, -29.076007800271686], [66.27615062770201, -21.766218366522388], [66.57740585779538, -14.371712622106902], [66.87866108788876, -7.026099056613839], [67.17991631798213, 0.1394148178774382], [67.48117154807551, 6.998900934779447], [67.78242677816888, 13.434536802937751], [68.08368200843688, 19.339303723376766], [68.38493723853026, 24.619478269035373], [68.68619246862363, 29.196838393950024], [68.987447698717, 33.010509296269696], [69.28870292881038, 36.01838206674309], [69.58995815907838, 38.19804965140189], [69.89121338917175, 39.5472196076155], [70.19246861926513, 40.08358077447273], [70.4937238493585, 39.84412034960558], [70.79497907945188, 38.883908071358306], [71.09623430954525, 37.27438396701835], [71.39748953981325, 35.101204447261324], [71.69874476990663, 32.46171735282546], [72.0, 29.462149011735168]], "points": [{"hours": 26.96688855701359, "value": 7.902128465011575, "derivative_numerical": 6.38116199244719, "datetime": "2026-01-02 02:58"}, {"hours": 52.70356381038437, "value": 15.708803593118992, "derivative_numerical": 9.749213116277177, "datetime": "2026-01-03 04:42"}, {"hours": 68.45143006159924, "value": 25.692644088873273, "derivative_numerical": 16.360769350822373, "datetime": "2026-01-03 20:27"}], "color": "#9467bd"};
+const setData = {"curve": [[0.0, -7.053353029642339], [0.30125523009337485, -2.5085069022381856], [0.6025104601867497, -0.32983941213907825], [0.9037656904547475, -0.6054950426688417], [1.2050209205481224, -3.3511591499434217], [1.5062761506414972, -8.509212824601372], [1.807531380734872, -15.94964969518439], [2.108786610828247, -25.472744772804024], [2.4100418409216218, -36.813432860522674], [2.7112970711896196, -49.64730799097873], [3.0125523012829944, -63.59812384302295], [3.3138075313763693, -78.2466281246938], [3.615062761469744, -93.14054683055161], [3.916317991563119, -107.80549282186719], [4.217573221831117, -121.75654676183082], [4.518828451924492, -134.51025458248418], [4.8200836820178665, -145.59675681284844], [5.121338912111241, -154.57175992235446], [5.422594142204616, -161.02807152493102], [5.723849372297991, -164.60641320240185], [6.025104602565989, -165.00524344182514], [6.326359832659364, -161.98934775223216], [6.627615062752739, -155.39697014428643], [6.928870292846113, -145.14530042654474], [7.230125522939488, -131.2341626833306], [7.531380753207486, -113.74779635922549], [7.832635983300861, -92.8546593739656], [8.133891213394236, -68.80524449043654], [8.43514644348761, -41.927926091609145], [8.736401673580986, -12.622917803286779], [9.037656903848983, 18.645523516637784], [9.338912133942358, 51.358497642246135], [9.640167364035733, 84.95324863508533], [9.941422594129108, 118.83508381540136], [10.242677824222483, 152.39017189704816], [10.543933054315858, 184.99891241631605], [10.845188284583855, 216.0495515360252], [11.14644351467723, 244.9517463921817], [11.447698744770605, 271.14973624503904], [11.74895397486398, 294.1348194854826], [12.050209204957355, 313.4568223584163], [12.351464435225353, 328.734303014087], [12.652719665318727, 339.66323370731675], [12.953974895412102, 346.0239504121763], [13.255230125505477, 347.68621228816204], [13.556485355598852, 344.61224046231945], [13.857740585692227, 336.85766625664473], [14.158995815960225, 324.57036686197284], [14.4602510460536, 307.98721214944965], [14.761506276146974, 287.4288086409587], [15.06276150624035, 263.29235687225025], [15.364016736333724, 236.04280024813593], [15.665271966601722, 206.20246693952527], [15.966527196695097, 174.33946637064855], [16.26778242678847, 141.055094839804], [16.569037656881846, 106.97055374699244], [16.87029288697522, 72.71330366137511], [17.171548117068596, 38.90334898208416], [17.472803347336594, 6.13978102534964], [17.77405857742997, -25.01210005302399], [18.075313807523344, -54.032814116382816], [18.37656903761672, -80.45959650134263], [18.677824267710093, -103.89590817552582], [18.97907949797809, -124.01937136265585], [19.280334728071466, -140.5879416473616], [19.58158995816484, -153.4441964400808], [19.882845188258216, -162.51764377587418], [20.18410041835159, -167.8250231888032], [20.48535564861959, -169.46859574061804], [20.786610878712963, -167.63247600647605], [21.087866108806338, -162.5771048263445], [21.389121338899713, -154.6319951317478], [21.690376568993088, -144.18693060273498], [21.991631799086463, -131.6818226203009], [22.29288702935446, -117.59546340692958], [22.594142259447835, -102.4334438910175], [22.89539748954121, -86.7155073280359], [23.196652719634585, -70.96263390367183], [23.49790794972796, -55.68415948825896], [23.799163179995958, -41.36521306852462], [24.100418410089333, -28.45477052855585], [24.401673640182707, -17.354593036580642], [24.702928870276082, -8.409312795745832], [25.004184100369457, -1.8978860281137089], [25.305439330462832, 1.9733812475696555], [25.60669456073083, 3.076069511948786], [25.907949790824205, 1.3630227157355872], [26.20920502091758, -3.130223407339372], [26.510460251010954, -10.286000199880526], [26.81171548110433, -19.90704948810743], [27.112970711372327, -31.721004803028876], [27.414225941465702, -45.38671228789376], [27.715481171559077, -60.502262570049666], [28.01673640165245, -76.61455247508398], [28.317991631745826, -93.23016961359285], [28.6192468618392, -109.82734612491043], [28.9205020921072, -125.86872100964017], [29.221757322200574, -140.81461269646903], [29.52301255229395, -154.13648864247244], [29.824267782387324, -165.33032690081546], [30.1255230124807, -173.92954631120747], [30.426778242748696, -179.5171927828692], [30.72803347284207, -181.7370930783539], [31.029288702935446, -180.30369471255327], [31.33054393302882, -175.0103463853377], [31.631799163122196, -165.73580735179746], [31.933054393390194, -152.44880828091271], [32.23430962348357, -135.21054069110434], [32.53556485357694, -114.17498694034582], [32.83682008367032, -89.58706604640051], [33.13807531376369, -61.77860958196186], [33.43933054385707, -31.162255689761594], [33.740585774125066, 1.7766308023548505], [34.04184100421844, 36.489832965753436], [34.343096234311815, 72.3777194950867], [34.64435146440519, 108.80200958188522], [34.945606694498565, 145.09956281437033], [35.24686192476656, 180.59686184331474], [35.54811715485994, 214.62487364154225], [35.84937238495331, 246.53392694796727], [36.15062761504669, 275.70824278476624], [36.45188284514006, 301.579795592929], [36.75313807523344, 323.6411539724735], [37.054393305501435, 341.45700467306995], [37.35564853559481, 354.6740695102237], [37.656903765688185, 363.0291914717061], [37.95815899578156, 366.35538327768654], [38.259414225874934, 364.5856927663716], [38.56066945614293, 357.7547963201887], [38.86192468623631, 345.9982742007759], [39.16317991632968, 329.54959110700423], [39.46443514642306, 308.73484917996916], [39.76569037651643, 283.965437652795], [40.066945606609806, 255.7287661551439], [40.368200836877804, 224.57728789844748], [40.66945606697118, 191.11608754500458], [40.970711297064554, 155.9893173362647], [41.27196652715793, 119.86582300183103], [41.573221757251304, 83.4242757798765], [41.8744769875193, 47.33817083118486], [42.175732217612676, 12.261056207383735], [42.47698744770605, -21.187688684893192], [42.778242677799426, -52.43618354560278], [43.0794979078928, -80.97217112996783], [43.3807531381608, -106.3536825458727], [43.68200836825417, -128.2179921013922], [43.98326359834755, -146.2886591794819], [44.28451882844092, -160.38052385606622], [44.5857740585343, -170.4025436321111], [44.88702928862767, -176.35841960829578], [45.18828451889567, -178.3450231347615], [45.489539748989046, -176.54866763201642], [45.79079497908242, -171.2393303713019], [46.092050209175795, -162.76297377319736], [46.39330543926917, -151.53215641829354], [46.69456066953717, -138.01516103072586], [46.99581589963054, -122.72390746539469], [47.29707112972392, -106.20093033911019], [47.59832635981729, -89.00573085465074], [47.89958158991067, -71.70082942545089], [48.20083682000404, -54.837832204820856], [48.50209205027204, -38.94383971623807], [48.803347280365415, -24.50851696518127], [49.10460251045879, -11.972110057912397], [49.405857740552165, -1.7146943775494692], [49.70711297064554, 5.9531054947902255], [50.00836820091354, 10.797705028933063], [50.30962343100691, 12.668291901168393], [50.61087866110029, 11.500562948821479], [50.91213389119366, 7.3183803744899265], [51.21338912128704, 0.23330846405518468], [51.51464435138041, -9.557964839937014], [51.81589958164841, -21.77826139304035], [52.117154811741784, -36.07650381734906], [52.41841004183516, -52.036116968264395], [52.719665271928534, -69.18504475512493], [53.02092050202191, -87.00716569932308], [53.32217573228991, -104.95484430801173], [53.62343096238328, -122.46232483070969], [53.924686192476656, -138.9596719584305], [54.22594142257003, -153.88692581459512], [54.527196652663406, -166.70814820639896], [54.828451882931404, -176.9250214691573], [55.12970711302478, -184.08968819705711], [55.43096234311815, -187.81651713736773], [55.73221757321153, -187.79250946369098], [56.0334728033049, -183.7860939738747], [56.33472803339828, -175.6540844924722], [56.635983263666276, -163.34662355673012], [56.93723849375965, -146.90997510312093], [57.238493723853026, -126.48707863224622], [57.5397489539464, -102.31584027997113], [57.841004184039775, -74.72516870005262], [58.14225941430777, -44.12883912690653], [58.44351464440115, -11.01730123735387], [58.74476987449452, 24.05237558255833], [59.0460251045879, 60.46821857564168], [59.34728033468127, 97.5764571891042], [59.64853556477465, 134.69570536863202], [59.949790795042645, 171.13191701478888], [60.25104602513602, 206.193754395216], [60.552301255229395, 239.20799635421275], [60.85355648532277, 269.5346464545877], [61.154811715416145, 296.581367844236], [61.45606694568414, 319.8168918224077], [61.75732217577752, 338.7830985593616], [62.05857740587089, 353.1054616244811], [62.35983263596427, 362.50161299279114], [62.66108786605764, 366.78781205441913], [62.96234309615102, 365.88317128201595], [63.263598326419014, 359.81152603901796], [63.56485355651239, 348.7009064870308], [63.866108786605764, 332.78062228098463], [64.16736401669914, 312.3760257123998], [64.46861924679251, 287.9010886906313], [64.76987447706051, 259.8489612158801], [65.07112970715389, 228.7807407095309], [65.37238493724726, 195.31273513681512], [65.67364016734064, 160.10250538073635], [65.97489539743401, 123.83403778621258], [66.27615062770201, 87.20238701518021], [66.57740585779538, 50.89817528409616], [66.87866108788876, 15.592289371619318], [67.17991631798213, -18.078852430698657], [67.48117154807551, -49.52710788495397], [67.78242677816888, -78.22519720275872], [68.08368200843688, -103.717766518904], [68.38493723853026, -125.63067143851086], [68.68619246862363, -143.67829468660227], [68.987447698717, -157.66872886084158], [69.28870292881038, -167.50671676075845], [69.58995815907838, -173.19431074030666], [69.89121338917175, -174.82924561004134], [70.19246861926513, -172.60108454096294], [70.4937238493585, -166.78525085306626], [70.79497907945188, -157.73510098977275], [71.09623430954525, -145.87224048628778], [71.39748953981325, -131.67532993087667], [71.69874476990663, -115.66764929764015], [72.0, -98.40372280106452]], "points": [{"hours": 26.96688855701359, "value": -25.7384103593668, "derivative": -39.24126154208496, "derivative_numerical": -42.28916255579062, "datetime": "2026-01-02 02:58"}, {"hours": 52.70356381038437, "value": -68.24669740246743, "derivative": -58.877064410066026, "derivative_numerical": -58.04222671954827, "datetime": "2026-01-03 04:42"}, {"hours": 68.45143006159924, "value": -129.95474957095243, "derivative": -64.23831113125644, "derivative_numerical": -66.3233766187435, "datetime": "2026-01-03 20:27"}]};
+const phaseCrossings = {"sp_m2": [3.4737221337892907, 15.894323333789291, 28.31492453378929, 40.73552573378929, 53.15612693378929, 65.57672813378929], "set_m2": [9.75651135845046, 22.177112558450464, 34.59771375845046, 47.01831495845046, 59.43891615845045, 71.85951735845046], "sp_all": {"m2": [3.4737221337892907, 15.894323333789291, 28.31492453378929, 40.73552573378929, 53.15612693378929, 65.57672813378929], "s2": [6.619568077909014, 18.619568077909012, 30.619568077909012, 42.619568077909015, 54.619568077909015, 66.61956807790901], "k1": [20.934239248109314, 44.86870884810931, 68.80317844810932], "o1": [17.851214345773915, 43.670556045773914, 69.48989774577392], "n2": [3.9348368497604866, 16.593185049760486, 29.251533249760488, 41.90988144976049, 54.5682296497605, 67.2265778497605]}, "set_all": {"m2": [9.75651135845046, 22.177112558450464, 34.59771375845046, 47.01831495845046, 59.43891615845045, 71.85951735845046], "s2": [0.8775908436966745, 12.877590843696673, 24.877590843696677, 36.87759084369667, 48.87759084369667, 60.87759084369667], "k1": [8.131922283295419, 32.066391883295424, 56.000861483295424], "o1": [5.810488818341061, 31.629830518341063, 57.44917221834106]}};
+
+// Constituent colors for phase=0 lines
+const constituentColors = {
+    'm2': '#e41a1c',
+    's2': '#377eb8',
+    'k1': '#4daf4a',
+    'o1': '#984ea3',
+    'n2': '#ff7f00'
+};
+
+// Track which constituents are visible
+const spVisibleConstituents = { m2: true, s2: true, k1: true, o1: true, n2: true };
+const setVisibleConstituents = { m2: true, s2: true, k1: true, o1: true };
+
+// Store y-axis ranges
+let spYRange = { min: 0, max: 0 };
+let setYRange = { min: 0, max: 0 };
+
+// Create vertical line shapes for selected constituents
+function createPhaseZeroShapes(crossings, yMin, yMax, visibleConstituents) {
+    const shapes = [];
+    Object.entries(crossings).forEach(([const_name, times]) => {
+        if (!visibleConstituents[const_name]) return;
+        const color = constituentColors[const_name] || '#888888';
+        times.forEach(t => {
+            shapes.push({
+                type: 'line',
+                x0: t, x1: t,
+                y0: yMin, y1: yMax,
+                line: { color: color, width: 1.5, dash: 'dot' },
+                opacity: 0.6
+            });
+        });
+    });
+    return shapes;
+}
+
+// Toggle short-period phase lines
+function toggleSpPhase(constituent, btn) {
+    spVisibleConstituents[constituent] = !spVisibleConstituents[constituent];
+    btn.classList.toggle('active');
+    if (!spVisibleConstituents[constituent]) {
+        btn.style.background = 'white';
+        btn.style.color = btn.style.borderColor;
+    } else {
+        btn.style.background = btn.style.borderColor;
+        btn.style.color = 'white';
+    }
+    updateSpShapes();
+}
+
+// Toggle SET phase lines
+function toggleSetPhase(constituent, btn) {
+    setVisibleConstituents[constituent] = !setVisibleConstituents[constituent];
+    btn.classList.toggle('active');
+    if (!setVisibleConstituents[constituent]) {
+        btn.style.background = 'white';
+        btn.style.color = btn.style.borderColor;
+    } else {
+        btn.style.background = btn.style.borderColor;
+        btn.style.color = 'white';
+    }
+    updateSetShapes();
+}
+
+// Update short-period chart shapes
+function updateSpShapes() {
+    const shapes = createPhaseZeroShapes(phaseCrossings.sp_all, spYRange.min, spYRange.max, spVisibleConstituents);
+    Plotly.relayout('sp-chart', { shapes: shapes });
+}
+
+// Update SET chart shapes
+function updateSetShapes() {
+    const shapes = createPhaseZeroShapes(phaseCrossings.set_all, setYRange.min, setYRange.max, setVisibleConstituents);
+    Plotly.relayout('set-chart', { shapes: shapes });
+}
+
+// Short-period Ocean Tide Chart
+function createSpChart() {
+    const traces = [];
+
+    Object.entries(spData).forEach(([name, data]) => {
+        traces.push({
+            x: data.curve.map(d => d[0]),
+            y: data.curve.map(d => d[1]),
+            mode: 'lines',
+            name: name,
+            line: { color: data.color, width: 2 }
+        });
+
+        traces.push({
+            x: data.points.map(d => d.hours),
+            y: data.points.map(d => d.value),
+            mode: 'markers',
+            name: name + ' pts',
+            showlegend: false,
+            marker: { color: data.color, size: 10 }
+        });
+    });
+
+    const firstModel = Object.values(spData)[0];
+    const tangentLen = 2.5;
+    firstModel.points.forEach((p, i) => {
+        traces.push({
+            x: [p.hours - tangentLen, p.hours + tangentLen],
+            y: [p.value - p.derivative * tangentLen, p.value + p.derivative * tangentLen],
+            mode: 'lines',
+            name: i === 0 ? 'Phase' : undefined,
+            legendgroup: 'phase',
+            showlegend: i === 0,
+            line: { color: '#d62728', width: 2, dash: 'dash' }
+        });
+        traces.push({
+            x: [p.hours - tangentLen, p.hours + tangentLen],
+            y: [p.value - p.derivative_numerical * tangentLen, p.value + p.derivative_numerical * tangentLen],
+            mode: 'lines',
+            name: i === 0 ? 'Numerical' : undefined,
+            legendgroup: 'numerical',
+            showlegend: i === 0,
+            line: { color: '#17becf', width: 2, dash: 'dot' }
+        });
+    });
+
+    // Calculate y-axis range for vertical lines
+    const allYValues = Object.values(spData).flatMap(d => d.curve.map(c => c[1]));
+    spYRange.min = Math.min(...allYValues) * 1.1;
+    spYRange.max = Math.max(...allYValues) * 1.1;
+
+    // Add phase=0 vertical lines (showing all constituents)
+    const shapes = createPhaseZeroShapes(phaseCrossings.sp_all, spYRange.min, spYRange.max, spVisibleConstituents);
+
+    Plotly.newPlot('sp-chart', traces, {
+        xaxis: { title: 'Hours from 2026-01-01 00:00', gridcolor: '#eee' },
+        yaxis: { title: 'Ocean Tide (cm)', gridcolor: '#eee' },
+        hovermode: 'closest',
+        legend: { x: 0, y: 1.1, orientation: 'h' },
+        margin: { t: 40 },
+        shapes: shapes
+    }, { responsive: true });
+}
+
+// Long-period Ocean Tide Chart
+function createLpChart() {
+    const traces = [];
+
+    traces.push({
+        x: lpData.curve.map(d => d[0]),
+        y: lpData.curve.map(d => d[1]),
+        mode: 'lines',
+        name: 'RE14',
+        line: { color: lpData.color, width: 2 }
+    });
+
+    traces.push({
+        x: lpData.points.map(d => d.hours),
+        y: lpData.points.map(d => d.value),
+        mode: 'markers',
+        name: 'Points',
+        marker: { color: '#1f77b4', size: 10 }
+    });
+
+    const tangentLen = 4;
+    lpData.points.forEach((p, i) => {
+        traces.push({
+            x: [p.hours - tangentLen, p.hours + tangentLen],
+            y: [p.value - p.derivative_numerical * tangentLen, p.value + p.derivative_numerical * tangentLen],
+            mode: 'lines',
+            name: i === 0 ? 'Numerical' : undefined,
+            legendgroup: 'numerical',
+            showlegend: i === 0,
+            line: { color: '#17becf', width: 2, dash: 'dot' }
+        });
+    });
+
+    Plotly.newPlot('lp-chart', traces, {
+        xaxis: { title: 'Hours', gridcolor: '#eee' },
+        yaxis: { title: 'Long-period Tide (cm)', gridcolor: '#eee' },
+        hovermode: 'closest',
+        legend: { x: 0, y: 1.15, orientation: 'h' },
+        margin: { t: 30 }
+    }, { responsive: true });
+}
+
+// SET Chart
+function createSetChart() {
+    const traces = [];
+
+    traces.push({
+        x: setData.curve.map(d => d[0]),
+        y: setData.curve.map(d => d[1]),
+        mode: 'lines',
+        name: 'SET Up',
+        line: { color: '#ff7f0e', width: 2 }
+    });
+
+    traces.push({
+        x: setData.points.map(d => d.hours),
+        y: setData.points.map(d => d.value),
+        mode: 'markers',
+        name: 'Points',
+        marker: { color: '#1f77b4', size: 10 }
+    });
+
+    const tangentLen = 2.5;
+    setData.points.forEach((p, i) => {
+        traces.push({
+            x: [p.hours - tangentLen, p.hours + tangentLen],
+            y: [p.value - p.derivative * tangentLen, p.value + p.derivative * tangentLen],
+            mode: 'lines',
+            name: i === 0 ? 'Phase' : undefined,
+            legendgroup: 'phase',
+            showlegend: i === 0,
+            line: { color: '#d62728', width: 2, dash: 'dash' }
+        });
+        traces.push({
+            x: [p.hours - tangentLen, p.hours + tangentLen],
+            y: [p.value - p.derivative_numerical * tangentLen, p.value + p.derivative_numerical * tangentLen],
+            mode: 'lines',
+            name: i === 0 ? 'Numerical' : undefined,
+            legendgroup: 'numerical',
+            showlegend: i === 0,
+            line: { color: '#17becf', width: 2, dash: 'dot' }
+        });
+    });
+
+    // Calculate y-axis range for vertical lines
+    const setYValues = setData.curve.map(c => c[1]);
+    setYRange.min = Math.min(...setYValues) * 1.1;
+    setYRange.max = Math.max(...setYValues) * 1.1;
+
+    // Add phase=0 vertical lines (showing all SET constituents)
+    const setShapes = createPhaseZeroShapes(phaseCrossings.set_all, setYRange.min, setYRange.max, setVisibleConstituents);
+
+    Plotly.newPlot('set-chart', traces, {
+        xaxis: { title: 'Hours', gridcolor: '#eee' },
+        yaxis: { title: 'SET Up (mm)', gridcolor: '#eee' },
+        hovermode: 'closest',
+        legend: { x: 0, y: 1.15, orientation: 'h' },
+        margin: { t: 30 },
+        shapes: setShapes
+    }, { responsive: true });
+}
+
+createSpChart();
+createLpChart();
+createSetChart();
+</script>
+</body>
+</html>

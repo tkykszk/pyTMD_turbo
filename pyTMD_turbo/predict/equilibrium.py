@@ -15,18 +15,18 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Optional, Union, List
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
-    import xarray as xr
+    pass
 
 __all__ = [
-    'equilibrium_tide',
     'LPET_elevations',
-    'mean_longitudes',
+    'equilibrium_tide',
     'legendre_polynomial',
+    'mean_longitudes',
 ]
 
 # Constants
@@ -180,9 +180,9 @@ def legendre_polynomial(lat: np.ndarray, l: int = 2, m: int = 0) -> np.ndarray:
 def equilibrium_tide(
     t: np.ndarray,
     lat: np.ndarray,
-    lon: Optional[np.ndarray] = None,
-    deltat: Union[float, np.ndarray] = 0.0,
-    constituents: Optional[List[int]] = None,
+    lon: np.ndarray | None = None,
+    deltat: float | np.ndarray = 0.0,
+    constituents: list[int] | None = None,
     h2: float = 0.606,
     k2: float = 0.299,
 ) -> np.ndarray:

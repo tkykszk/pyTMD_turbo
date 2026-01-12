@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pathlib
 import warnings
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -26,19 +26,19 @@ if TYPE_CHECKING:
     import xarray as xr
 
 __all__ = [
-    'read_netcdf',
-    'read_constituent',
     'open_dataset',
     'open_fes_elevation',
     'open_fes_transport',
     'open_mfdataset',
+    'read_constituent',
+    'read_netcdf',
 ]
 
 
 def read_netcdf(
-    input_file: Union[str, pathlib.Path],
-    variable: Optional[str] = None,
-) -> Dict:
+    input_file: str | pathlib.Path,
+    variable: str | None = None,
+) -> dict:
     """
     Read FES NetCDF file
 
@@ -113,9 +113,8 @@ def read_netcdf(
         for var in ds.data_vars:
             if 'amp' in var.lower() and amplitude is None:
                 amplitude = ds[var].values
-            elif 'phase' in var.lower() or 'ph' in var.lower():
-                if phase is None:
-                    phase = ds[var].values
+            elif ('phase' in var.lower() or 'ph' in var.lower()) and phase is None:
+                phase = ds[var].values
 
     if amplitude is None or phase is None:
         raise ValueError("Could not find amplitude and phase variables")
@@ -152,8 +151,8 @@ def read_netcdf(
 
 
 def read_constituent(
-    input_file: Union[str, pathlib.Path],
-) -> Dict:
+    input_file: str | pathlib.Path,
+) -> dict:
     """
     Read single constituent from FES NetCDF file
 
@@ -178,9 +177,9 @@ def read_constituent(
 
 
 def open_fes_elevation(
-    input_files: Union[str, pathlib.Path, List[Union[str, pathlib.Path]]],
+    input_files: str | pathlib.Path | list[str | pathlib.Path],
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read FES elevation files and return as xarray Dataset
 
@@ -260,10 +259,10 @@ def open_fes_elevation(
 
 
 def open_fes_transport(
-    u_files: Union[str, pathlib.Path, List[Union[str, pathlib.Path]]],
-    v_files: Union[str, pathlib.Path, List[Union[str, pathlib.Path]]],
+    u_files: str | pathlib.Path | list[str | pathlib.Path],
+    v_files: str | pathlib.Path | list[str | pathlib.Path],
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Read FES transport files and return as xarray Dataset
 
@@ -362,10 +361,10 @@ def open_fes_transport(
 
 
 def open_dataset(
-    model_files: Union[str, pathlib.Path, List[Union[str, pathlib.Path]]],
+    model_files: str | pathlib.Path | list[str | pathlib.Path],
     group: str = 'z',
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Open FES tidal model as xarray Dataset
 
@@ -415,10 +414,10 @@ def open_dataset(
 
 
 def open_mfdataset(
-    model_files: List[Union[str, pathlib.Path]],
+    model_files: list[str | pathlib.Path],
     group: str = 'z',
     apply_mask: bool = True,
-) -> 'xr.Dataset':
+) -> xr.Dataset:
     """
     Open multiple FES files and merge into single Dataset
 

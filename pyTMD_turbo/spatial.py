@@ -20,16 +20,16 @@ Derived from pyTMD by Tyler Sutterley (MIT License)
 
 from __future__ import annotations
 
-import numpy as np
-from typing import Tuple, Optional, Union
 from dataclasses import dataclass
 
+import numpy as np
+
 __all__ = [
+    'datum',
+    'scale_factors',
     'to_cartesian',
     'to_geodetic',
     'to_sphere',
-    'scale_factors',
-    'datum',
 ]
 
 
@@ -115,9 +115,9 @@ class datum:
 def to_cartesian(
     lon: np.ndarray,
     lat: np.ndarray,
-    h: Optional[np.ndarray] = None,
+    h: np.ndarray | None = None,
     ellipsoid: str = 'WGS84',
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert geographic coordinates to cartesian (ECEF)
 
@@ -188,7 +188,7 @@ def to_geodetic(
     z: np.ndarray,
     ellipsoid: str = 'WGS84',
     method: str = 'bowring',
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert cartesian (ECEF) coordinates to geographic
 
@@ -284,8 +284,8 @@ def to_geodetic(
 def to_sphere(
     lon: np.ndarray,
     lat: np.ndarray,
-    r: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    r: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert geographic coordinates to spherical coordinates
 
@@ -330,7 +330,7 @@ def to_sphere(
 def scale_factors(
     lat: np.ndarray,
     ellipsoid: str = 'WGS84',
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate scale factors for ellipsoid
 
@@ -384,7 +384,7 @@ def convert_ellipsoid(
     h: np.ndarray,
     source_ellipsoid: str = 'WGS84',
     target_ellipsoid: str = 'GRS80',
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert coordinates between ellipsoids
 
