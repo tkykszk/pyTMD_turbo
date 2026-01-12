@@ -114,6 +114,8 @@ ignore = [
     "RUF012",
     # SIM108: ternary not always clearer with comments
     "SIM108",
+    # RUF059: unused unpacked variables (intentional structural unpacking)
+    "RUF059",
 ]
 
 [tool.ruff.lint.pydocstyle]
