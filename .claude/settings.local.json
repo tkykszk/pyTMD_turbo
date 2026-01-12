@@ -32,7 +32,13 @@
       "Bash(ruff check:*)",
       "Bash(pip-audit:*)",
       "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo log --oneline -5)",
-      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo add -A)"
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo add -A)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo commit -m \"$\\(cat <<''EOF''\nchore: release v0.2.1\n\n- Add GitHub Actions: lint.yml \\(ruff\\), audit.yml \\(pip-audit\\)\n- Fix all lint errors \\(390 -> 0\\) with ruff check --fix\n- Add ruff ignore: E501, RUF002/RUF003, RUF012, SIM108\n- Add E2E test classes for FES2014, FES2022, TPXO9-atlas-v5\n- Add optimization strategy documentation in -IMPLEMENTATION_STATUS.md\n- Update version to 0.2.1\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo tag -a v0.2.1 -m \"Release v0.2.1 - CI/CD and lint fixes\")",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo log --oneline -3)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo tag -l)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo push origin main --tags)",
+      "Bash(git -C /Users/taka/Documents/python/pyTMD_turbo push origin main)"
     ]
   }
 }
